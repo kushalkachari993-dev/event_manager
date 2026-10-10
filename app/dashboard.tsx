@@ -5,7 +5,13 @@ import { ArrowDownRight, ArrowRight, CalendarDays, Check, ChevronDown, CircleHel
 import { CATEGORIES, metrics, type Category, type EventRecord } from "../lib/finance";
 
 const currency = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 const prettyDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 type Mode = "event" | "expense" | null;
