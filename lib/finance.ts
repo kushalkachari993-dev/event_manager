@@ -18,6 +18,7 @@ export type EventRecord = {
   eventDate: string;
   quotePaise: number;
   createdAt: string;
+  archivedAt: string | null;
   budgets: { category: Category; plannedPaise: number }[];
   expenses: { id: string; category: Category; description: string; amountPaise: number; spentOn: string }[];
 };

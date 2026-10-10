@@ -8,6 +8,7 @@ export const events = sqliteTable("events", {
   eventDate: text("event_date").notNull(),
   quotePaise: integer("quote_paise").notNull(),
   createdAt: text("created_at").notNull(),
+  archivedAt: text("archived_at"),
 });
 
 export const budgets = sqliteTable("budgets", {
