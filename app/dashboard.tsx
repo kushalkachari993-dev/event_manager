@@ -15,11 +15,13 @@ const today = () => {
 const prettyDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 type Mode = "event" | "expense" | null;
+type View = "overview" | "events";
 
 export default function Dashboard({ displayName }: { displayName: string }) {
   const [items, setItems] = useState<EventRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>(null);
+  const [view, setView] = useState<View>("overview");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -44,6 +46,11 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   const totals = { quote: items.reduce((n, item) => n + item.quotePaise, 0), forecast: all.reduce((n, item) => n + item.projectedProfit, 0), spent: all.reduce((n, item) => n + item.spent, 0) };
   const firstName = displayName.split(/[ @]/)[0] || "there";
 
+  function switchView(nextView: View) {
+    setView(nextView);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function submit(path: string, payload: unknown) {
     setSaving(true); setError("");
     try {
@@ -51,7 +58,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
       const data = await response.json() as { id?: string; error?: string };
       if (!response.ok) throw new Error(data.error || "Could not save");
       await load();
-      if (data.id) setSelectedId(data.id);
+      if (data.id) { setSelectedId(data.id); setView("events"); }
       setMode(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not save");
@@ -62,24 +69,28 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark"><Layers3 size={20} strokeWidth={2.4}/></span><span>event<span className="brand-light">profit</span><b>.</b></span></div>
       <div className="workspace-label">WORKSPACE</div>
-      <nav className="side-nav"><div className="nav-item active"><span className="nav-dot"/> Overview</div><div className="nav-item muted"><CalendarDays size={18}/> Events</div></nav>
+      <nav className="side-nav" aria-label="Workspace">
+        <button type="button" className={`nav-item ${view === "overview" ? "active" : ""}`} aria-current={view === "overview" ? "page" : undefined} onClick={() => switchView("overview")}><span className="nav-dot"/> Overview</button>
+        <button type="button" className={`nav-item ${view === "events" ? "active" : ""}`} aria-current={view === "events" ? "page" : undefined} onClick={() => switchView("events")}><CalendarDays size={18}/> Events</button>
+      </nav>
       <div className="side-spacer"/>
       <div className="side-note"><div className="side-note-icon"><Sparkles size={17}/></div><strong>Know your number</strong><p>Track every cost while there is still time to protect your profit.</p></div>
       <div className="profile"><div className="avatar">{firstName.slice(0, 1).toUpperCase()}</div><div><strong>{firstName}</strong><span>Private workspace</span></div><ChevronDown size={15}/></div>
     </aside>
 
     <main className="main">
-      <header className="topbar"><div className="crumb">Workspace <span>/</span> <strong>Overview</strong></div><div className="topbar-right"><span className="secure-pill"><span/> Private dashboard</span><div className="small-avatar">{firstName.slice(0, 1).toUpperCase()}</div></div></header>
-      <div className="content">
-        <section className="heading"><div><div className="eyebrow">YOUR FINANCIAL CONTROL ROOM</div><h1>Good morning, {firstName} <span className="wave">✳</span></h1><p>Keep your event costs in view and your margins on track.</p></div><button className="primary-button" onClick={() => { setError(""); setMode("event"); }}><Plus size={18}/> New event</button></section>
+      <header className="topbar"><div className="crumb">Workspace <span>/</span> <strong>{view === "overview" ? "Overview" : "Events"}</strong></div><div className="topbar-right"><span className="secure-pill"><span/> Private dashboard</span><div className="small-avatar">{firstName.slice(0, 1).toUpperCase()}</div></div></header>
+      <nav className="mobile-nav" aria-label="Workspace"><button type="button" className={view === "overview" ? "active" : ""} onClick={() => switchView("overview")}>Overview</button><button type="button" className={view === "events" ? "active" : ""} onClick={() => switchView("events")}>Events</button></nav>
+      <div className={`content ${view === "events" ? "events-view" : ""}`}>
+        <section className="heading"><div><div className="eyebrow">{view === "overview" ? "YOUR FINANCIAL CONTROL ROOM" : "YOUR EVENT WORKSPACE"}</div><h1>{view === "overview" ? <>Good morning, {firstName} <span className="wave">✳</span></> : "Your events"}</h1><p>{view === "overview" ? "Keep your event costs in view and your margins on track." : "Review budgets, expenses, and projected profit for every event."}</p></div><button className="primary-button" onClick={() => { setError(""); setMode("event"); }}><Plus size={18}/> New event</button></section>
         {error && <div role="alert" className="error-banner">{error}<button onClick={() => setError("")} aria-label="Dismiss error"><X size={16}/></button></div>}
         {loading ? <div className="loading">Loading your workspace…</div> : <>
-          <section className="metric-grid">
+          {view === "overview" && <section className="metric-grid">
             <Metric icon={<CalendarDays size={20}/>} label="Active events" value={String(items.length)} note="Events in your workspace" tone="purple" />
             <Metric icon={<IndianRupee size={20}/>} label="Total quoted" value={currency(totals.quote)} note="Across all events" tone="blue" />
             <Metric icon={<TrendingUp size={20}/>} label="Projected profit" value={currency(totals.forecast)} note="Based on planned & actual costs" tone="green" />
             <Metric icon={<Wallet size={20}/>} label="Expenses logged" value={currency(totals.spent)} note="Actual spend to date" tone="orange" />
-          </section>
+          </section>}
 
           {items.length === 0 ? <div className="empty-layout"><div className="empty-card"><div className="empty-icon"><Layers3 size={30}/></div><span className="section-kicker">START HERE</span><h2>Make your next event more profitable.</h2><p>Add an event with your quote and category budgets. Then record expenses as they happen to see your projected profit update.</p><button className="primary-button" onClick={() => setMode("event")}><Plus size={18}/> Create first event</button></div><div className="how-card"><span className="section-kicker">HOW IT WORKS</span><div className="how-row"><span>01</span><div><strong>Plan</strong><p>Set a quote and budget by category.</p></div></div><div className="how-row"><span>02</span><div><strong>Track</strong><p>Log each actual expense.</p></div></div><div className="how-row"><span>03</span><div><strong>Protect</strong><p>Spot overruns before they eat your margin.</p></div></div></div></div> : <>
             <div className="section-heading"><div><span className="section-kicker">YOUR PORTFOLIO</span><h2>Events <span className="count">{items.length}</span></h2></div><span className="subtle">Select an event to inspect its costs</span></div>
