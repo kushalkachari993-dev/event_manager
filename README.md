@@ -12,8 +12,9 @@ A small profit tracker for independent event decorators. Plan an event's quote a
 - Archive events without deleting their records, then restore them when needed.
 - View active quoted value, spending, projected cost, profit, and margin. Forecast cost uses the higher of planned or actual spend in each category.
 - Record client deposits and other payments, correct or remove entries, and see the balance due for each event. Payments are records of money received outside the app.
+- Print or save an event financial report as PDF, or download the same figures and transaction lists as CSV.
 
-This is an MVP for testing the workflow with decorators. It does not yet include receipts, payment collection, invoicing, exports, or billing.
+This is an MVP for testing the workflow with decorators. It does not yet include receipts, payment collection, invoicing, or billing.
 
 ## Stack
 

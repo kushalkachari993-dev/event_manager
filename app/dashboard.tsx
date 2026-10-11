@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Archive, ArrowDownRight, ArrowRight, CalendarDays, Check, ChevronDown, CircleHelp, IndianRupee, Layers3, Pencil, Plus, RotateCcw, Sparkles, Trash2, TrendingUp, Wallet, X } from "lucide-react";
+import { Archive, ArrowDownRight, ArrowRight, CalendarDays, Check, ChevronDown, CircleHelp, Download, IndianRupee, Layers3, Pencil, Plus, Printer, RotateCcw, Sparkles, Trash2, TrendingUp, Wallet, X } from "lucide-react";
 import { CATEGORIES, metrics, type Category, type EventRecord } from "../lib/finance";
+import { buildEventCsv, eventReportFilename } from "../lib/report";
+import EventReport from "./event-report";
 
 const currency = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
 const today = () => {
@@ -85,7 +87,19 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     }
   }
 
-  return <div className="shell">
+  function downloadCsv(event: EventRecord) {
+    const blob = new Blob([buildEventCsv(event)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = eventReportFilename(event);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  }
+
+  return <><div className="shell">
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark"><Layers3 size={20} strokeWidth={2.4}/></span><span>event<span className="brand-light">profit</span><b>.</b></span></div>
       <div className="workspace-label">WORKSPACE</div>
@@ -138,6 +152,13 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                 </div>
               </div>)}</div> : <div className="no-expenses">No payments recorded yet. Add a deposit when your client pays you.</div>}
             </section>}
+            {selected && <section className="report-card">
+              <div><span className="section-kicker">EVENT REPORT</span><h2>Share your event numbers</h2><p>Get a printable summary or download the underlying figures as a spreadsheet file.</p></div>
+              <div className="report-actions">
+                <button type="button" className="outline-button" onClick={() => downloadCsv(selected)}><Download size={16}/> Download CSV</button>
+                <button type="button" className="primary-button" onClick={() => window.print()}><Printer size={16}/> Print / Save PDF</button>
+              </div>
+            </section>}
           </>}
           {view === "events" && archivedItems.length > 0 && <section className="archive-section"><div className="section-heading"><div><span className="section-kicker">PAST WORK</span><h2>Archived events <span className="count">{archivedItems.length}</span></h2></div></div><div className="archive-list">{archivedItems.map((item) => <div className="archive-row" key={item.id}><div><strong>{item.name}</strong><span>{prettyDate(item.eventDate)} · {currency(item.quotePaise)} quote</span></div><button type="button" className="outline-button" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(item.id)}`, { action: "restore" }, "PATCH")}><RotateCcw size={14}/> Restore</button></div>)}</div></section>}
         </>}
@@ -146,7 +167,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     {(mode === "event" || mode === "edit-event") && <EventModal eventRecord={mode === "edit-event" ? selected : null} error={error} close={() => setMode(null)} saving={saving} submit={(data) => submit(mode === "edit-event" && selected ? `/api/events/${encodeURIComponent(selected.id)}` : "/api/events", data, mode === "edit-event" ? "PATCH" : "POST")} />}
     {(mode === "expense" || mode === "edit-expense") && selected && <ExpenseModal eventName={selected.name} eventId={selected.id} expense={mode === "edit-expense" ? editingExpense : undefined} error={error} close={() => { setMode(null); setEditingExpenseId(null); }} saving={saving} submit={(data) => submit(mode === "edit-expense" && editingExpense ? `/api/expenses/${encodeURIComponent(editingExpense.id)}` : "/api/expenses", data, mode === "edit-expense" ? "PATCH" : "POST")} />}
     {(mode === "payment" || mode === "edit-payment") && selected && <PaymentModal eventName={selected.name} eventId={selected.id} payment={mode === "edit-payment" ? editingPayment : undefined} error={error} close={() => { setMode(null); setEditingPaymentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-payment" && editingPayment ? `/api/payments/${encodeURIComponent(editingPayment.id)}` : "/api/payments", data, mode === "edit-payment" ? "PATCH" : "POST")} />}
-  </div>;
+  </div>{selected && <EventReport event={selected} />}</>;
 }
 
 function Metric({ icon, label, value, note, tone }: { icon: React.ReactNode; label: string; value: string; note: string; tone: string }) {
