@@ -21,6 +21,7 @@ export type EventRecord = {
   archivedAt: string | null;
   budgets: { category: Category; plannedPaise: number }[];
   expenses: { id: string; category: Category; description: string; amountPaise: number; spentOn: string }[];
+  payments: { id: string; amountPaise: number; receivedOn: string; note: string }[];
 };
 
 export function metrics(event: EventRecord) {
@@ -32,5 +33,6 @@ export function metrics(event: EventRecord) {
     return sum + Math.max(budget, actual);
   }, 0);
   const projectedProfit = event.quotePaise - projectedCost;
-  return { planned, spent, projectedCost, projectedProfit, margin: event.quotePaise ? Math.round((projectedProfit / event.quotePaise) * 100) : 0 };
+  const received = event.payments.reduce((sum, payment) => sum + payment.amountPaise, 0);
+  return { planned, spent, projectedCost, projectedProfit, received, balance: event.quotePaise - received, margin: event.quotePaise ? Math.round((projectedProfit / event.quotePaise) * 100) : 0 };
 }

@@ -11,6 +11,7 @@ A small profit tracker for independent event decorators. Plan an event's quote a
 - Add, correct, and remove expenses. The dashboard updates totals and category overruns.
 - Archive events without deleting their records, then restore them when needed.
 - View active quoted value, spending, projected cost, profit, and margin. Forecast cost uses the higher of planned or actual spend in each category.
+- Record client deposits and other payments, correct or remove entries, and see the balance due for each event. Payments are records of money received outside the app.
 
 This is an MVP for testing the workflow with decorators. It does not yet include receipts, payment collection, invoicing, exports, or billing.
 
@@ -27,6 +28,7 @@ npm ci
 npm run build
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_vengeful_triton.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_outgoing_masked_marvel.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_useful_blonde_phantom.sql
 npm run dev
 ```
 
