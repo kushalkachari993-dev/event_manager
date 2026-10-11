@@ -27,3 +27,12 @@ export const expenses = sqliteTable("expenses", {
   spentOn: text("spent_on").notNull(),
   createdAt: text("created_at").notNull(),
 });
+
+export const payments = sqliteTable("payments", {
+  id: text("id").primaryKey(),
+  eventId: text("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  amountPaise: integer("amount_paise").notNull(),
+  receivedOn: text("received_on").notNull(),
+  note: text("note").notNull().default(""),
+  createdAt: text("created_at").notNull(),
+});

@@ -14,7 +14,7 @@ const today = () => {
 };
 const prettyDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-type Mode = "event" | "expense" | "edit-event" | "edit-expense" | null;
+type Mode = "event" | "expense" | "edit-event" | "edit-expense" | "payment" | "edit-payment" | null;
 type View = "overview" | "events";
 
 export default function Dashboard({ displayName }: { displayName: string }) {
@@ -22,6 +22,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>(null);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [view, setView] = useState<View>("overview");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,6 +46,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   const archivedItems = items.filter((item) => item.archivedAt);
   const selected = activeItems.find((item) => item.id === selectedId) ?? null;
   const editingExpense = selected?.expenses.find((expense) => expense.id === editingExpenseId);
+  const editingPayment = selected?.payments.find((payment) => payment.id === editingPaymentId);
   const selectedMetrics = selected ? metrics(selected) : null;
   const all = useMemo(() => items.filter((item) => !item.archivedAt).map(metrics), [items]);
   const totals = { quote: activeItems.reduce((n, item) => n + item.quotePaise, 0), forecast: all.reduce((n, item) => n + item.projectedProfit, 0), spent: all.reduce((n, item) => n + item.spent, 0) };
@@ -65,6 +67,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
       if (data.id) { setSelectedId(data.id); setView("events"); }
       setMode(null);
       setEditingExpenseId(null);
+      setEditingPaymentId(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not save");
     } finally { setSaving(false); }
@@ -73,6 +76,12 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   async function removeExpense(id: string, description: string) {
     if (window.confirm(`Remove “${description}”? This expense cannot be recovered.`)) {
       await submit(`/api/expenses/${encodeURIComponent(id)}`, null, "DELETE");
+    }
+  }
+
+  async function removePayment(id: string) {
+    if (window.confirm("Remove this payment record? The balance due will update.")) {
+      await submit(`/api/payments/${encodeURIComponent(id)}`, null, "DELETE");
     }
   }
 
@@ -109,6 +118,26 @@ export default function Dashboard({ displayName }: { displayName: string }) {
             {selected && selectedMetrics && <div className="detail-grid"><section className="detail-card"><div className="detail-top"><div><span className="section-kicker">PROFIT FORECAST</span><h2>{selected.name}</h2><p>{selected.client || "Client not specified"} <span>·</span> {prettyDate(selected.eventDate)}</p></div><div className={`status ${selectedMetrics.projectedProfit < 0 ? "at-risk" : ""}`}><span/> {selectedMetrics.projectedProfit < 0 ? "At risk" : "On track"}</div></div><div className="record-actions"><button type="button" className="text-button" onClick={() => { setError(""); setMode("edit-event"); }}><Pencil size={14}/> Edit event & budgets</button><button type="button" className="text-button muted-action" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(selected.id)}`, { action: "archive" }, "PATCH")}><Archive size={14}/> Archive event</button></div><div className="profit-feature"><div><span>Projected profit</span><strong className={selectedMetrics.projectedProfit < 0 ? "negative-text" : ""}>{currency(selectedMetrics.projectedProfit)}</strong><small>{selectedMetrics.margin}% projected margin</small></div><div className="profit-graphic"><TrendingUp size={46} strokeWidth={1.4}/></div></div><div className="finance-row"><div><span>Client quote</span><strong>{currency(selected.quotePaise)}</strong></div><div><span>Planned costs</span><strong>{currency(selectedMetrics.planned)}</strong></div><div><span>Spent so far</span><strong>{currency(selectedMetrics.spent)}</strong></div><div><span>Projected cost</span><strong>{currency(selectedMetrics.projectedCost)}</strong></div></div><div className="formula"><CircleHelp size={16}/><span>Forecast cost uses the higher of budget or actual spend in each category.</span></div></section>
             <section className="detail-card cost-card"><div className="cost-heading"><div><span className="section-kicker">WHERE THE MONEY GOES</span><h2>Cost breakdown</h2></div><button className="outline-button" onClick={() => { setError(""); setMode("expense"); }}><Plus size={16}/> Add expense</button></div><div className="category-list">{CATEGORIES.map((category) => { const planned = selected.budgets.find((b) => b.category === category)?.plannedPaise ?? 0; const actual = selected.expenses.filter((e) => e.category === category).reduce((n, e) => n + e.amountPaise, 0); const progress = planned ? Math.min(100, (actual / planned) * 100) : actual ? 100 : 0; return <div className="category-row" key={category}><div className="category-line"><strong>{category}</strong><span className={actual > planned ? "overrun" : ""}>{currency(actual)} <em>/ {currency(planned)}</em></span></div><div className="progress"><span className={actual > planned ? "overrun-fill" : ""} style={{ width: `${progress}%` }}/></div></div>; })}</div></section></div>}
             {selected && <section className="expenses-card"><div className="expenses-heading"><div><span className="section-kicker">ACTIVITY</span><h2>Expenses</h2></div><button className="text-button" onClick={() => setMode("expense")}>Add expense <ArrowRight size={16}/></button></div>{selected.expenses.length ? <div className="expense-list">{selected.expenses.map((expense) => <div className="expense-row" key={expense.id}><div className="expense-icon"><ArrowDownRight size={18}/></div><div className="expense-description"><strong>{expense.description}</strong><span>{expense.category} · {prettyDate(expense.spentOn)}</span></div><strong>{currency(expense.amountPaise)}</strong><div className="expense-actions"><button type="button" className="icon-button" aria-label={`Edit ${expense.description}`} title="Edit expense" onClick={() => { setError(""); setEditingExpenseId(expense.id); setMode("edit-expense"); }}><Pencil size={15}/></button><button type="button" className="icon-button danger-icon" aria-label={`Remove ${expense.description}`} title="Remove expense" disabled={saving} onClick={() => void removeExpense(expense.id, expense.description)}><Trash2 size={15}/></button></div></div>)}</div> : <div className="no-expenses">No expenses logged yet. Add one as soon as you make a purchase.</div>}</section>}
+            {selected && selectedMetrics && <section className="payments-card">
+              <div className="expenses-heading">
+                <div><span className="section-kicker">CLIENT PAYMENTS</span><h2>Payments received</h2></div>
+                <button type="button" className="outline-button" onClick={() => { setError(""); setMode("payment"); }}><Plus size={16}/> Record payment</button>
+              </div>
+              <div className="payment-summary">
+                <div><span>Client quote</span><strong>{currency(selected.quotePaise)}</strong></div>
+                <div><span>Received</span><strong>{currency(selectedMetrics.received)}</strong></div>
+                <div><span>{selectedMetrics.balance < 0 ? "Overpaid" : "Balance due"}</span><strong className={selectedMetrics.balance > 0 ? "balance-due" : "balance-settled"}>{currency(Math.abs(selectedMetrics.balance))}</strong></div>
+              </div>
+              {selected.payments.length ? <div className="payment-list">{selected.payments.map((payment) => <div className="expense-row" key={payment.id}>
+                <div className="payment-icon"><IndianRupee size={18}/></div>
+                <div className="expense-description"><strong>{payment.note || "Client payment"}</strong><span>Received {prettyDate(payment.receivedOn)}</span></div>
+                <strong>{currency(payment.amountPaise)}</strong>
+                <div className="expense-actions">
+                  <button type="button" className="icon-button" aria-label={`Edit payment from ${prettyDate(payment.receivedOn)}`} title="Edit payment" onClick={() => { setError(""); setEditingPaymentId(payment.id); setMode("edit-payment"); }}><Pencil size={15}/></button>
+                  <button type="button" className="icon-button danger-icon" aria-label={`Remove payment from ${prettyDate(payment.receivedOn)}`} title="Remove payment" disabled={saving} onClick={() => void removePayment(payment.id)}><Trash2 size={15}/></button>
+                </div>
+              </div>)}</div> : <div className="no-expenses">No payments recorded yet. Add a deposit when your client pays you.</div>}
+            </section>}
           </>}
           {view === "events" && archivedItems.length > 0 && <section className="archive-section"><div className="section-heading"><div><span className="section-kicker">PAST WORK</span><h2>Archived events <span className="count">{archivedItems.length}</span></h2></div></div><div className="archive-list">{archivedItems.map((item) => <div className="archive-row" key={item.id}><div><strong>{item.name}</strong><span>{prettyDate(item.eventDate)} · {currency(item.quotePaise)} quote</span></div><button type="button" className="outline-button" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(item.id)}`, { action: "restore" }, "PATCH")}><RotateCcw size={14}/> Restore</button></div>)}</div></section>}
         </>}
@@ -116,6 +145,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     </main>
     {(mode === "event" || mode === "edit-event") && <EventModal eventRecord={mode === "edit-event" ? selected : null} error={error} close={() => setMode(null)} saving={saving} submit={(data) => submit(mode === "edit-event" && selected ? `/api/events/${encodeURIComponent(selected.id)}` : "/api/events", data, mode === "edit-event" ? "PATCH" : "POST")} />}
     {(mode === "expense" || mode === "edit-expense") && selected && <ExpenseModal eventName={selected.name} eventId={selected.id} expense={mode === "edit-expense" ? editingExpense : undefined} error={error} close={() => { setMode(null); setEditingExpenseId(null); }} saving={saving} submit={(data) => submit(mode === "edit-expense" && editingExpense ? `/api/expenses/${encodeURIComponent(editingExpense.id)}` : "/api/expenses", data, mode === "edit-expense" ? "PATCH" : "POST")} />}
+    {(mode === "payment" || mode === "edit-payment") && selected && <PaymentModal eventName={selected.name} eventId={selected.id} payment={mode === "edit-payment" ? editingPayment : undefined} error={error} close={() => { setMode(null); setEditingPaymentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-payment" && editingPayment ? `/api/payments/${encodeURIComponent(editingPayment.id)}` : "/api/payments", data, mode === "edit-payment" ? "PATCH" : "POST")} />}
   </div>;
 }
 
@@ -135,4 +165,42 @@ function ExpenseModal({ eventName, eventId, expense, error, close, saving, submi
   const [description, setDescription] = useState(expense?.description ?? ""); const [category, setCategory] = useState<Category>(expense?.category ?? "Flowers"); const [amount, setAmount] = useState(expense ? String(expense.amountPaise / 100) : ""); const [spentOn, setSpentOn] = useState(expense?.spentOn ?? today());
   function onSubmit(event: FormEvent) { event.preventDefault(); submit({ eventId, description, category, amount: Number(amount), spentOn }); }
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><form className="modal compact" onSubmit={onSubmit}><div className="modal-header"><div><span className="section-kicker">{expense ? "CORRECT A COST" : "RECORD A COST"}</span><h2>{expense ? "Edit expense" : "Add expense"}</h2><p>{eventName}</p></div><button type="button" className="icon-button" onClick={close} aria-label="Close"><X size={20}/></button></div>{error && <div role="alert" className="modal-error">{error}</div>}<div className="modal-body"><div className="field"><label htmlFor="description">What did you pay for?</label><input id="description" required maxLength={160} placeholder="e.g. Fresh marigold flowers" value={description} onChange={(e) => setDescription(e.target.value)}/></div><div className="two-fields"><div className="field"><label htmlFor="category">Category</label><select id="category" value={category} onChange={(e) => setCategory(e.target.value as Category)}>{CATEGORIES.map((item) => <option key={item}>{item}</option>)}</select></div><div className="field"><label htmlFor="amount">Amount (₹)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="2500" value={amount} onChange={(e) => setAmount(e.target.value)}/></div></div><div className="field"><label htmlFor="spent-on">Date paid</label><input id="spent-on" type="date" required value={spentOn} onChange={(e) => setSpentOn(e.target.value)}/></div></div><div className="modal-actions"><button type="button" className="cancel-button" onClick={close}>Cancel</button><button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving…" : expense ? "Save changes" : "Save expense"} <Check size={17}/></button></div></form></div>;
+}
+
+function PaymentModal({ eventName, eventId, payment, error, close, saving, submit }: {
+  eventName: string;
+  eventId: string;
+  payment?: EventRecord["payments"][number];
+  error: string;
+  close: () => void;
+  saving: boolean;
+  submit: (data: unknown) => void;
+}) {
+  const [amount, setAmount] = useState(payment ? String(payment.amountPaise / 100) : "");
+  const [receivedOn, setReceivedOn] = useState(payment?.receivedOn ?? today());
+  const [note, setNote] = useState(payment?.note ?? "");
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    submit({ eventId, amount: Number(amount), receivedOn, note });
+  }
+
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
+    <form className="modal compact" onSubmit={onSubmit}>
+      <div className="modal-header">
+        <div><span className="section-kicker">CLIENT PAYMENTS</span><h2>{payment ? "Edit payment" : "Record payment"}</h2><p>{eventName}</p></div>
+        <button type="button" className="icon-button" onClick={close} aria-label="Close"><X size={20}/></button>
+      </div>
+      {error && <div role="alert" className="modal-error">{error}</div>}
+      <div className="modal-body">
+        <p className="payment-help">Record money already received from your client. This does not collect a payment.</p>
+        <div className="two-fields">
+          <div className="field"><label htmlFor="payment-amount">Amount received (₹)</label><input id="payment-amount" type="number" min="0.01" step="0.01" required placeholder="10000" value={amount} onChange={(event) => setAmount(event.target.value)}/></div>
+          <div className="field"><label htmlFor="payment-date">Date received</label><input id="payment-date" type="date" required value={receivedOn} onChange={(event) => setReceivedOn(event.target.value)}/></div>
+        </div>
+        <div className="field"><label htmlFor="payment-note">Note <span>optional</span></label><input id="payment-note" maxLength={160} placeholder="e.g. Booking deposit" value={note} onChange={(event) => setNote(event.target.value)}/></div>
+      </div>
+      <div className="modal-actions"><button type="button" className="cancel-button" onClick={close}>Cancel</button><button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving…" : payment ? "Save changes" : "Save payment"} <Check size={17}/></button></div>
+    </form>
+  </div>;
 }
