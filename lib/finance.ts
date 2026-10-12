@@ -11,6 +11,13 @@ export function toPaise(value: unknown): number | null {
   return Math.round(amount * 100);
 }
 
+const wholeRupees = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+const rupeesWithPaise = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export function formatCurrency(paise: number): string {
+  return (paise % 100 === 0 ? wholeRupees : rupeesWithPaise).format(paise / 100);
+}
+
 export type EventRecord = {
   id: string;
   name: string;

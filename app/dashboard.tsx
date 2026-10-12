@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Archive, ArrowDownRight, ArrowRight, CalendarDays, Check, ChevronDown, CircleHelp, Download, IndianRupee, Layers3, Pencil, Plus, Printer, RotateCcw, Sparkles, Trash2, TrendingUp, Wallet, X } from "lucide-react";
-import { CATEGORIES, metrics, type Category, type EventRecord } from "../lib/finance";
+import { CATEGORIES, formatCurrency as currency, metrics, type Category, type EventRecord } from "../lib/finance";
 import { buildEventCsv, eventReportFilename } from "../lib/report";
 import EventReport from "./event-report";
 
-const currency = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
 const today = () => {
   const now = new Date();
   const year = now.getFullYear();
@@ -51,7 +50,11 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   const editingPayment = selected?.payments.find((payment) => payment.id === editingPaymentId);
   const selectedMetrics = selected ? metrics(selected) : null;
   const all = useMemo(() => items.filter((item) => !item.archivedAt).map(metrics), [items]);
-  const totals = { quote: activeItems.reduce((n, item) => n + item.quotePaise, 0), forecast: all.reduce((n, item) => n + item.projectedProfit, 0), spent: all.reduce((n, item) => n + item.spent, 0) };
+  const totals = {
+    forecast: all.reduce((n, item) => n + item.projectedProfit, 0),
+    spent: all.reduce((n, item) => n + item.spent, 0),
+    balanceDue: all.reduce((n, item) => n + Math.max(0, item.balance), 0),
+  };
   const firstName = displayName.split(/[ @]/)[0] || "there";
 
   function switchView(nextView: View) {
@@ -121,9 +124,9 @@ export default function Dashboard({ displayName }: { displayName: string }) {
         {loading ? <div className="loading">Loading your workspace…</div> : <>
           {view === "overview" && <section className="metric-grid">
             <Metric icon={<CalendarDays size={20}/>} label="Active events" value={String(activeItems.length)} note="Events in your workspace" tone="purple" />
-            <Metric icon={<IndianRupee size={20}/>} label="Total quoted" value={currency(totals.quote)} note="Across all events" tone="blue" />
             <Metric icon={<TrendingUp size={20}/>} label="Projected profit" value={currency(totals.forecast)} note="Based on planned & actual costs" tone="green" />
-            <Metric icon={<Wallet size={20}/>} label="Expenses logged" value={currency(totals.spent)} note="Actual spend to date" tone="orange" />
+            <Metric icon={<Wallet size={20}/>} label="Expenses logged" value={currency(totals.spent)} note="Actual spend to date" tone="blue" />
+            <Metric icon={<IndianRupee size={20}/>} label="Client balance due" value={currency(totals.balanceDue)} note="Unpaid across active events" tone="orange" />
           </section>}
 
           {activeItems.length === 0 ? <div className="empty-layout"><div className="empty-card"><div className="empty-icon"><Layers3 size={30}/></div><span className="section-kicker">START HERE</span><h2>Make your next event more profitable.</h2><p>Add an event with your quote and category budgets. Then record expenses as they happen to see your projected profit update.</p><button className="primary-button" onClick={() => setMode("event")}><Plus size={18}/> Create first event</button></div><div className="how-card"><span className="section-kicker">HOW IT WORKS</span><div className="how-row"><span>01</span><div><strong>Plan</strong><p>Set a quote and budget by category.</p></div></div><div className="how-row"><span>02</span><div><strong>Track</strong><p>Log each actual expense.</p></div></div><div className="how-row"><span>03</span><div><strong>Protect</strong><p>Spot overruns before they eat your margin.</p></div></div></div></div> : <>
