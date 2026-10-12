@@ -18,9 +18,20 @@ export const budgets = sqliteTable("budgets", {
   plannedPaise: integer("planned_paise").notNull(),
 });
 
+export const commitments = sqliteTable("vendor_commitments", {
+  id: text("id").primaryKey(),
+  eventId: text("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  vendor: text("vendor").notNull(),
+  category: text("category").notNull(),
+  agreedPaise: integer("agreed_paise").notNull(),
+  dueOn: text("due_on").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
 export const expenses = sqliteTable("expenses", {
   id: text("id").primaryKey(),
   eventId: text("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  commitmentId: text("commitment_id").references(() => commitments.id, { onDelete: "set null" }),
   category: text("category").notNull(),
   description: text("description").notNull(),
   amountPaise: integer("amount_paise").notNull(),

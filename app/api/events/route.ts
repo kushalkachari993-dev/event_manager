@@ -1,7 +1,7 @@
 import { eq, desc, inArray } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
-import { budgets, events, expenses, payments } from "../../../db/schema";
+import { budgets, commitments, events, expenses, payments } from "../../../db/schema";
 import { CATEGORIES, toPaise } from "../../../lib/finance";
 
 export async function GET() {
@@ -12,15 +12,17 @@ export async function GET() {
     const owned = await db.select().from(events).where(eq(events.ownerId, user.userId)).orderBy(desc(events.createdAt));
     if (!owned.length) return Response.json({ events: [] });
     const ids = owned.map((item) => item.id);
-    const [plans, costs, received] = await Promise.all([
+    const [plans, costs, vendorPlans, received] = await Promise.all([
       db.select().from(budgets).where(inArray(budgets.eventId, ids)),
       db.select().from(expenses).where(inArray(expenses.eventId, ids)).orderBy(desc(expenses.createdAt)),
+      db.select().from(commitments).where(inArray(commitments.eventId, ids)).orderBy(commitments.dueOn),
       db.select().from(payments).where(inArray(payments.eventId, ids)).orderBy(desc(payments.receivedOn), desc(payments.createdAt)),
     ]);
     return Response.json({ events: owned.map(({ ownerId: _ownerId, ...item }) => ({
       ...item,
       budgets: plans.filter((row) => row.eventId === item.id).map(({ category, plannedPaise }) => ({ category, plannedPaise })),
-      expenses: costs.filter((row) => row.eventId === item.id).map(({ id, category, description, amountPaise, spentOn }) => ({ id, category, description, amountPaise, spentOn })),
+      expenses: costs.filter((row) => row.eventId === item.id).map(({ id, commitmentId, category, description, amountPaise, spentOn }) => ({ id, commitmentId, category, description, amountPaise, spentOn })),
+      commitments: vendorPlans.filter((row) => row.eventId === item.id).map(({ id, vendor, category, agreedPaise, dueOn }) => ({ id, vendor, category, agreedPaise, dueOn })),
       payments: received.filter((row) => row.eventId === item.id).map(({ id, amountPaise, receivedOn, note }) => ({ id, amountPaise, receivedOn, note })),
     })) });
   } catch {

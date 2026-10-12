@@ -1,4 +1,4 @@
-import { CATEGORIES, metrics, type EventRecord } from "../lib/finance";
+import { CATEGORIES, categoryForecast, metrics, vendorPaidPaise, type EventRecord } from "../lib/finance";
 
 const money = (paise: number) => new Intl.NumberFormat("en-IN", {
   style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2,
@@ -34,12 +34,22 @@ export default function EventReport({ event }: { event: EventRecord }) {
       <table>
         <thead><tr><th scope="col">Category</th><th scope="col">Budget</th><th scope="col">Spent</th><th scope="col">Forecast</th></tr></thead>
         <tbody>{CATEGORIES.map((category) => {
-          const budget = event.budgets.find((item) => item.category === category)?.plannedPaise ?? 0;
-          const spent = event.expenses.filter((item) => item.category === category).reduce((sum, item) => sum + item.amountPaise, 0);
-          return <tr key={category}><th scope="row">{category}</th><td>{money(budget)}</td><td>{money(spent)}</td><td>{money(Math.max(budget, spent))}</td></tr>;
+          const { budget, spent, forecast } = categoryForecast(event, category);
+          return <tr key={category}><th scope="row">{category}</th><td>{money(budget)}</td><td>{money(spent)}</td><td>{money(forecast)}</td></tr>;
         })}</tbody>
         <tfoot><tr><th scope="row">Total costs</th><td>{money(result.planned)}</td><td>{money(result.spent)}</td><td>{money(result.projectedCost)}</td></tr></tfoot>
       </table>
+    </section>
+
+    <section className="report-section">
+      <h2>Vendor commitments</h2>
+      {event.commitments.length ? <table>
+        <thead><tr><th scope="col">Vendor / due</th><th scope="col">Category</th><th scope="col">Agreed</th><th scope="col">Paid</th><th scope="col">Remaining</th></tr></thead>
+        <tbody>{event.commitments.map((commitment) => {
+          const paid = vendorPaidPaise(event, commitment.id);
+          return <tr key={commitment.id}><td>{commitment.vendor}<br/>{date(commitment.dueOn)}</td><td>{commitment.category}</td><td>{money(commitment.agreedPaise)}</td><td>{money(paid)}</td><td>{money(Math.max(0, commitment.agreedPaise - paid))}</td></tr>;
+        })}</tbody>
+      </table> : <p className="report-empty">No vendor commitments recorded.</p>}
     </section>
 
     <section className="report-section">
@@ -59,7 +69,7 @@ export default function EventReport({ event }: { event: EventRecord }) {
     </section>
 
     <footer className="report-footer">
-      <p>Forecast cost uses the higher of budget or actual spend in each category.</p>
+      <p>Forecast cost uses the higher of budget or paid costs plus unpaid vendor commitments in each category.</p>
       <p>Internal planning report. This is not an invoice or payment request.</p>
     </footer>
   </article>;

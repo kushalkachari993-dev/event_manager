@@ -1,14 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
-import { events, expenses } from "../../../../db/schema";
+import { commitments, events, expenses } from "../../../../db/schema";
 import { isCategory, toPaise } from "../../../../lib/finance";
 
 type Context = { params: Promise<{ id: string }> };
 
 async function ownedExpense(id: string, ownerId: string) {
   const db = getDb();
-  const [row] = await db.select({ id: expenses.id, eventId: expenses.eventId })
+  const [row] = await db.select({ id: expenses.id, eventId: expenses.eventId, commitmentId: expenses.commitmentId })
     .from(expenses).innerJoin(events, eq(expenses.eventId, events.id))
     .where(and(eq(expenses.id, id), eq(events.ownerId, ownerId))).limit(1);
   return row;
@@ -23,7 +23,9 @@ export async function PATCH(request: Request, { params }: Context) {
     if (!owned) return Response.json({ error: "Expense not found" }, { status: 404 });
     const data = await request.json() as Record<string, unknown>;
     const description = typeof data.description === "string" ? data.description.trim() : "";
-    const category = data.category;
+    const [commitment] = owned.commitmentId ? await getDb().select({ category: commitments.category }).from(commitments)
+      .where(eq(commitments.id, owned.commitmentId)).limit(1) : [];
+    const category = commitment?.category ?? data.category;
     const amountPaise = toPaise(data.amount);
     const spentOn = typeof data.spentOn === "string" ? data.spentOn : "";
     if (!description || description.length > 160 || !isCategory(category) || amountPaise === null || amountPaise === 0
