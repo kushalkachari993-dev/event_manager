@@ -10,7 +10,7 @@ A small profit tracker for independent event decorators. Plan an event's quote a
 - Create and edit events with a client, date, quote, and budgets for Flowers, Materials, Labour, Rentals, Transport, and Other.
 - Add, correct, and remove expenses. The dashboard updates totals and category overruns.
 - Archive events without deleting their records, then restore them when needed.
-- View active quoted value, spending, projected cost, profit, and margin. Forecast cost uses the higher of planned or actual spend in each category.
+- View active spending, projected cost, profit, margin, and client balance due. Money with paise is shown exactly on the dashboard. Forecast cost uses the higher of planned or actual spend in each category.
 - Record client deposits and other payments, correct or remove entries, and see the balance due for each event. Payments are records of money received outside the app.
 - Print or save an event financial report as PDF, or download the same figures and transaction lists as CSV.
 
