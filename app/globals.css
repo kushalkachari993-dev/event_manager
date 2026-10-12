@@ -36,6 +36,10 @@
 @media(max-width:750px){.report-card{align-items:stretch;flex-direction:column}.report-actions{width:100%}.report-actions button{flex:1;justify-content:center}}
 @media(max-width:450px){.report-card{padding:19px}.report-actions{flex-direction:column}}
 
+.category-forecast{font-size:11px;color:#9a6b55;margin-top:6px}
+.commitment-summary{font-size:12px;line-height:1.6;color:#8995a4;margin:0 0 12px}.commitment-summary strong{color:#354057}
+.commitment-list{border-top:1px solid #eff1f5}.commitment-row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:18px;row-gap:11px;padding:16px 0;border-bottom:1px solid #eff1f5}.commitment-main,.commitment-amount{display:grid;gap:5px;min-width:0}.commitment-main strong,.commitment-amount strong{font-size:13px}.commitment-main span,.commitment-amount span{color:#9ca6b2;font-size:11px}.commitment-amount{text-align:right}.commitment-actions{grid-column:1/-1;display:flex;align-items:center;gap:9px}.commitment-actions .icon-button{width:29px;height:29px;display:grid;place-items:center}.commitment-actions .danger-icon{color:#c36d70}.commitment-actions .text-button{margin-right:auto}
+@media(max-width:450px){.commitments-card .expenses-heading{align-items:flex-start;gap:12px}.commitments-card .outline-button{white-space:normal}.commitment-row{grid-template-columns:1fr}.commitment-amount{text-align:left}}
 @page{size:A4;margin:15mm}
 @media print{
   html,body{background:#fff!important;color:#1f2937!important;margin:0!important;padding:0!important}

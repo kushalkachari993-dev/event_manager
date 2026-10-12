@@ -27,19 +27,32 @@ export type EventRecord = {
   createdAt: string;
   archivedAt: string | null;
   budgets: { category: Category; plannedPaise: number }[];
-  expenses: { id: string; category: Category; description: string; amountPaise: number; spentOn: string }[];
+  expenses: { id: string; commitmentId: string | null; category: Category; description: string; amountPaise: number; spentOn: string }[];
+  commitments: { id: string; vendor: string; category: Category; agreedPaise: number; dueOn: string }[];
   payments: { id: string; amountPaise: number; receivedOn: string; note: string }[];
 };
+
+export function vendorPaidPaise(event: EventRecord, commitmentId: string): number {
+  return event.expenses.reduce((sum, expense) => sum + (expense.commitmentId === commitmentId ? expense.amountPaise : 0), 0);
+}
+
+export function categoryForecast(event: EventRecord, category: Category) {
+  const budget = event.budgets.find((row) => row.category === category)?.plannedPaise ?? 0;
+  const spent = event.expenses.reduce((sum, expense) => sum + (expense.category === category ? expense.amountPaise : 0), 0);
+  const unpaidCommitments = event.commitments.reduce((sum, commitment) => {
+    if (commitment.category !== category) return sum;
+    return sum + Math.max(0, commitment.agreedPaise - vendorPaidPaise(event, commitment.id));
+  }, 0);
+  return { budget, spent, unpaidCommitments, forecast: Math.max(budget, spent + unpaidCommitments) };
+}
 
 export function metrics(event: EventRecord) {
   const planned = event.budgets.reduce((sum, row) => sum + row.plannedPaise, 0);
   const spent = event.expenses.reduce((sum, row) => sum + row.amountPaise, 0);
-  const projectedCost = CATEGORIES.reduce((sum, category) => {
-    const budget = event.budgets.find((row) => row.category === category)?.plannedPaise ?? 0;
-    const actual = event.expenses.filter((row) => row.category === category).reduce((n, row) => n + row.amountPaise, 0);
-    return sum + Math.max(budget, actual);
-  }, 0);
+  const categories = CATEGORIES.map((category) => categoryForecast(event, category));
+  const projectedCost = categories.reduce((sum, row) => sum + row.forecast, 0);
+  const unpaidCommitments = categories.reduce((sum, row) => sum + row.unpaidCommitments, 0);
   const projectedProfit = event.quotePaise - projectedCost;
   const received = event.payments.reduce((sum, payment) => sum + payment.amountPaise, 0);
-  return { planned, spent, projectedCost, projectedProfit, received, balance: event.quotePaise - received, margin: event.quotePaise ? Math.round((projectedProfit / event.quotePaise) * 100) : 0 };
+  return { planned, spent, unpaidCommitments, projectedCost, projectedProfit, received, balance: event.quotePaise - received, margin: event.quotePaise ? Math.round((projectedProfit / event.quotePaise) * 100) : 0 };
 }

@@ -10,7 +10,8 @@ A small profit tracker for independent event decorators. Plan an event's quote a
 - Create and edit events with a client, date, quote, and budgets for Flowers, Materials, Labour, Rentals, Transport, and Other.
 - Add, correct, and remove expenses. The dashboard updates totals and category overruns.
 - Archive events without deleting their records, then restore them when needed.
-- View active spending, projected cost, profit, margin, and client balance due. Money with paise is shown exactly on the dashboard. Forecast cost uses the higher of planned or actual spend in each category.
+- Track agreed vendor commitments and their due dates before paying them. Link vendor payments to expense records; the forecast includes the unpaid amount without counting payments twice. Removing a commitment keeps its recorded expenses.
+- View active spending, projected cost, profit, margin, and client balance due. Money with paise is shown exactly on the dashboard. Forecast cost uses the higher of planned budget or actual spending plus unpaid commitments in each category.
 - Record client deposits and other payments, correct or remove entries, and see the balance due for each event. Payments are records of money received outside the app.
 - Print or save an event financial report as PDF, or download the same figures and transaction lists as CSV.
 
@@ -30,6 +31,7 @@ npm run build
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_vengeful_triton.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_outgoing_masked_marvel.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_useful_blonde_phantom.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0003_purple_corsair.sql
 npm run dev
 ```
 
@@ -39,6 +41,7 @@ Apply each migration only once to a given local database. Open `http://127.0.0.1
 
 ```sh
 npx tsc --noEmit
+npm test
 npm run build
 ```
 
