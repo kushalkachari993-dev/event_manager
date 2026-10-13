@@ -1,8 +1,19 @@
 export const CATEGORIES = ["Flowers", "Materials", "Labour", "Rentals", "Transport", "Other"] as const;
-export type Category = (typeof CATEGORIES)[number];
+export const BAKERY_CATEGORIES = ["Ingredients", "Labour", "Packaging", "Delivery", "Overheads", "Other"] as const;
+const ALL_CATEGORIES: readonly string[] = [...CATEGORIES, ...BAKERY_CATEGORIES];
+export type BusinessKind = "event" | "bakery";
+export type Category = (typeof CATEGORIES)[number] | (typeof BAKERY_CATEGORIES)[number];
+
+export function categoriesFor(kind: BusinessKind): readonly Category[] {
+  return kind === "bakery" ? BAKERY_CATEGORIES : CATEGORIES;
+}
 
 export function isCategory(value: unknown): value is Category {
-  return typeof value === "string" && CATEGORIES.includes(value as Category);
+  return typeof value === "string" && ALL_CATEGORIES.includes(value);
+}
+
+export function isCategoryFor(value: unknown, kind: BusinessKind): value is Category {
+  return isCategory(value) && categoriesFor(kind).includes(value);
 }
 
 export function toPaise(value: unknown): number | null {
@@ -20,6 +31,7 @@ export function formatCurrency(paise: number): string {
 
 export type EventRecord = {
   id: string;
+  kind: BusinessKind;
   name: string;
   client: string;
   eventDate: string;
@@ -49,7 +61,7 @@ export function categoryForecast(event: EventRecord, category: Category) {
 export function metrics(event: EventRecord) {
   const planned = event.budgets.reduce((sum, row) => sum + row.plannedPaise, 0);
   const spent = event.expenses.reduce((sum, row) => sum + row.amountPaise, 0);
-  const categories = CATEGORIES.map((category) => categoryForecast(event, category));
+  const categories = categoriesFor(event.kind).map((category) => categoryForecast(event, category));
   const projectedCost = categories.reduce((sum, row) => sum + row.forecast, 0);
   const unpaidCommitments = categories.reduce((sum, row) => sum + row.unpaidCommitments, 0);
   const projectedProfit = event.quotePaise - projectedCost;

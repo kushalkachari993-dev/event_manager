@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
 import { commitments, events, expenses } from "../../../db/schema";
-import { isCategory, toPaise } from "../../../lib/finance";
+import { isCategoryFor, toPaise } from "../../../lib/finance";
 
 export async function POST(request: Request) {
   const user = await getChatGPTUser();
@@ -19,13 +19,13 @@ export async function POST(request: Request) {
       return Response.json({ error: "Enter a description, category, amount, and date." }, { status: 400 });
     }
     const db = getDb();
-    const [owned] = await db.select({ id: events.id }).from(events).where(and(eq(events.id, eventId), eq(events.ownerId, user.userId))).limit(1);
+    const [owned] = await db.select({ id: events.id, kind: events.kind }).from(events).where(and(eq(events.id, eventId), eq(events.ownerId, user.userId))).limit(1);
     if (!owned) return Response.json({ error: "Event not found" }, { status: 404 });
     const [commitment] = commitmentId ? await db.select({ category: commitments.category }).from(commitments)
       .where(and(eq(commitments.id, commitmentId), eq(commitments.eventId, eventId))).limit(1) : [];
     if (commitmentId && !commitment) return Response.json({ error: "Vendor commitment not found" }, { status: 404 });
     const category = commitment?.category ?? data.category;
-    if (!isCategory(category)) return Response.json({ error: "Choose a valid category." }, { status: 400 });
+    if (!isCategoryFor(category, owned.kind === "bakery" ? "bakery" : "event")) return Response.json({ error: "Choose a valid category." }, { status: 400 });
     await db.insert(expenses).values({ id: crypto.randomUUID(), eventId, commitmentId, description, category, amountPaise, spentOn, createdAt: new Date().toISOString() });
     return Response.json({ ok: true }, { status: 201 });
   } catch {

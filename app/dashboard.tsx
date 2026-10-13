@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Archive, ArrowDownRight, ArrowRight, CalendarDays, Check, ChevronDown, CircleHelp, Download, IndianRupee, Layers3, Pencil, Plus, Printer, RotateCcw, Sparkles, Trash2, TrendingUp, Wallet, X } from "lucide-react";
-import { CATEGORIES, categoryForecast, formatCurrency as currency, metrics, type Category, type EventRecord } from "../lib/finance";
+import { Archive, ArrowDownRight, ArrowRight, CakeSlice, CalendarDays, Check, ChevronDown, CircleHelp, Download, IndianRupee, Layers3, Pencil, Plus, Printer, RotateCcw, Sparkles, Trash2, TrendingUp, Wallet, X } from "lucide-react";
+import { categoriesFor, categoryForecast, formatCurrency as currency, metrics, type BusinessKind, type Category, type EventRecord } from "../lib/finance";
 import { buildEventCsv, eventReportFilename } from "../lib/report";
 import EventReport from "./event-report";
 import VendorCommitments from "./vendor-commitments";
@@ -17,7 +17,7 @@ const today = () => {
 const prettyDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 type Mode = "event" | "expense" | "edit-event" | "edit-expense" | "payment" | "edit-payment" | null;
-type View = "overview" | "events";
+type View = "overview" | "events" | "bakery";
 
 export default function Dashboard({ displayName }: { displayName: string }) {
   const [items, setItems] = useState<EventRecord[]>([]);
@@ -45,13 +45,15 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   }, []);
   useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [load]);
 
-  const activeItems = items.filter((item) => !item.archivedAt);
-  const archivedItems = items.filter((item) => item.archivedAt);
-  const selected = activeItems.find((item) => item.id === selectedId) ?? null;
+  const workspaceKind: BusinessKind = view === "bakery" ? "bakery" : "event";
+  const isBakery = workspaceKind === "bakery";
+  const activeItems = items.filter((item) => item.kind === workspaceKind && !item.archivedAt);
+  const archivedItems = items.filter((item) => item.kind === workspaceKind && item.archivedAt);
+  const selected = activeItems.find((item) => item.id === selectedId) ?? activeItems[0] ?? null;
   const editingExpense = selected?.expenses.find((expense) => expense.id === editingExpenseId);
   const editingPayment = selected?.payments.find((payment) => payment.id === editingPaymentId);
   const selectedMetrics = selected ? metrics(selected) : null;
-  const all = useMemo(() => items.filter((item) => !item.archivedAt).map(metrics), [items]);
+  const all = useMemo(() => items.filter((item) => item.kind === workspaceKind && !item.archivedAt).map(metrics), [items, workspaceKind]);
   const totals = {
     forecast: all.reduce((n, item) => n + item.projectedProfit, 0),
     spent: all.reduce((n, item) => n + item.spent, 0),
@@ -61,6 +63,9 @@ export default function Dashboard({ displayName }: { displayName: string }) {
 
   function switchView(nextView: View) {
     setView(nextView);
+    const kind = nextView === "bakery" ? "bakery" : "event";
+    setSelectedId((current) => items.some((item) => item.id === current && item.kind === kind && !item.archivedAt)
+      ? current : items.find((item) => item.kind === kind && !item.archivedAt)?.id ?? null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -71,7 +76,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
       const data = await response.json() as { id?: string; error?: string };
       if (!response.ok) throw new Error(data.error || "Could not save");
       await load();
-      if (data.id) { setSelectedId(data.id); setView("events"); }
+      if (data.id) { setSelectedId(data.id); setView(isBakery ? "bakery" : "events"); }
       setMode(null);
       setEditingExpenseId(null);
       setEditingPaymentId(null);
@@ -112,6 +117,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
       <nav className="side-nav" aria-label="Workspace">
         <button type="button" className={`nav-item ${view === "overview" ? "active" : ""}`} aria-current={view === "overview" ? "page" : undefined} onClick={() => switchView("overview")}><span className="nav-dot"/> Overview</button>
         <button type="button" className={`nav-item ${view === "events" ? "active" : ""}`} aria-current={view === "events" ? "page" : undefined} onClick={() => switchView("events")}><CalendarDays size={18}/> Events</button>
+        <button type="button" className={`nav-item ${view === "bakery" ? "active" : ""}`} aria-current={view === "bakery" ? "page" : undefined} onClick={() => switchView("bakery")}><CakeSlice size={18}/> Bakery orders</button>
       </nav>
       <div className="side-spacer"/>
       <div className="side-note"><div className="side-note-icon"><Sparkles size={17}/></div><strong>Know your number</strong><p>Track every cost while there is still time to protect your profit.</p></div>
@@ -119,63 +125,63 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     </aside>
 
     <main className="main">
-      <header className="topbar"><div className="crumb">Workspace <span>/</span> <strong>{view === "overview" ? "Overview" : "Events"}</strong></div><div className="topbar-right"><span className="secure-pill"><span/> Private dashboard</span><div className="small-avatar">{firstName.slice(0, 1).toUpperCase()}</div></div></header>
-      <nav className="mobile-nav" aria-label="Workspace"><button type="button" className={view === "overview" ? "active" : ""} onClick={() => switchView("overview")}>Overview</button><button type="button" className={view === "events" ? "active" : ""} onClick={() => switchView("events")}>Events</button></nav>
-      <div className={`content ${view === "events" ? "events-view" : ""}`}>
-        <section className="heading"><div><div className="eyebrow">{view === "overview" ? "YOUR FINANCIAL CONTROL ROOM" : "YOUR EVENT WORKSPACE"}</div><h1>{view === "overview" ? <>Good morning, {firstName} <span className="wave">✳</span></> : "Your events"}</h1><p>{view === "overview" ? "Keep your event costs in view and your margins on track." : "Review budgets, expenses, and projected profit for every event."}</p></div><button className="primary-button" onClick={() => { setError(""); setMode("event"); }}><Plus size={18}/> New event</button></section>
+      <header className="topbar"><div className="crumb">Workspace <span>/</span> <strong>{view === "overview" ? "Overview" : isBakery ? "Bakery orders" : "Events"}</strong></div><div className="topbar-right"><span className="secure-pill"><span/> Private dashboard</span><div className="small-avatar">{firstName.slice(0, 1).toUpperCase()}</div></div></header>
+      <nav className="mobile-nav" aria-label="Workspace"><button type="button" className={view === "overview" ? "active" : ""} onClick={() => switchView("overview")}>Overview</button><button type="button" className={view === "events" ? "active" : ""} onClick={() => switchView("events")}>Events</button><button type="button" className={view === "bakery" ? "active" : ""} onClick={() => switchView("bakery")}>Bakery</button></nav>
+      <div className={`content ${view !== "overview" ? "events-view" : ""}`}>
+        <section className="heading"><div><div className="eyebrow">{isBakery ? "YOUR CUSTOM-ORDER WORKSPACE" : view === "overview" ? "YOUR FINANCIAL CONTROL ROOM" : "YOUR EVENT WORKSPACE"}</div><h1>{isBakery ? "Your bakery orders" : view === "overview" ? <>Good morning, {firstName} <span className="wave">✳</span></> : "Your events"}</h1><p>{isBakery ? "Price each order, track ingredient costs, and protect your margin." : view === "overview" ? "Keep your event costs in view and your margins on track." : "Review budgets, expenses, and projected profit for every event."}</p></div><button className="primary-button" onClick={() => { setError(""); setMode("event"); }}><Plus size={18}/> {isBakery ? "New order" : "New event"}</button></section>
         {error && <div role="alert" className="error-banner">{error}<button onClick={() => setError("")} aria-label="Dismiss error"><X size={16}/></button></div>}
         {loading ? <div className="loading">Loading your workspace…</div> : <>
-          {view === "overview" && <section className="metric-grid">
-            <Metric icon={<CalendarDays size={20}/>} label="Active events" value={String(activeItems.length)} note="Events in your workspace" tone="purple" />
-            <Metric icon={<TrendingUp size={20}/>} label="Projected profit" value={currency(totals.forecast)} note="Includes vendor commitments" tone="green" />
+          {view !== "events" && <section className="metric-grid">
+            <Metric icon={isBakery ? <CakeSlice size={20}/> : <CalendarDays size={20}/>} label={isBakery ? "Active orders" : "Active events"} value={String(activeItems.length)} note={isBakery ? "Orders in your workspace" : "Events in your workspace"} tone="purple" />
+            <Metric icon={<TrendingUp size={20}/>} label="Projected profit" value={currency(totals.forecast)} note={isBakery ? "Includes supplier commitments" : "Includes vendor commitments"} tone="green" />
             <Metric icon={<Wallet size={20}/>} label="Expenses logged" value={currency(totals.spent)} note="Actual spend to date" tone="blue" />
-            <Metric icon={<IndianRupee size={20}/>} label="Client balance due" value={currency(totals.balanceDue)} note="Unpaid across active events" tone="orange" />
+            <Metric icon={<IndianRupee size={20}/>} label={isBakery ? "Customer balance due" : "Client balance due"} value={currency(totals.balanceDue)} note={isBakery ? "Unpaid across active orders" : "Unpaid across active events"} tone="orange" />
           </section>}
 
-          {activeItems.length === 0 ? <div className="empty-layout"><div className="empty-card"><div className="empty-icon"><Layers3 size={30}/></div><span className="section-kicker">START HERE</span><h2>Make your next event more profitable.</h2><p>Add an event with your quote and category budgets. Then record expenses as they happen to see your projected profit update.</p><button className="primary-button" onClick={() => setMode("event")}><Plus size={18}/> Create first event</button></div><div className="how-card"><span className="section-kicker">HOW IT WORKS</span><div className="how-row"><span>01</span><div><strong>Plan</strong><p>Set a quote and budget by category.</p></div></div><div className="how-row"><span>02</span><div><strong>Track</strong><p>Log each actual expense.</p></div></div><div className="how-row"><span>03</span><div><strong>Protect</strong><p>Spot overruns before they eat your margin.</p></div></div></div></div> : <>
-            <div className="section-heading"><div><span className="section-kicker">YOUR PORTFOLIO</span><h2>Events <span className="count">{activeItems.length}</span></h2></div><span className="subtle">Select an event to inspect its costs</span></div>
-            <div className="event-tabs">{activeItems.map((item) => { const m = metrics(item); return <button key={item.id} className={`event-tab ${selectedId === item.id ? "selected" : ""}`} onClick={() => setSelectedId(item.id)}><span className="event-tab-icon"><CalendarDays size={18}/></span><span><strong>{item.name}</strong><small>{prettyDate(item.eventDate)} · {currency(item.quotePaise)} quote</small></span><span className={`tab-profit ${m.projectedProfit < 0 ? "negative" : ""}`}>{currency(m.projectedProfit)} <ArrowRight size={16}/></span></button>; })}</div>
-            {selected && selectedMetrics && <div className="detail-grid"><section className="detail-card"><div className="detail-top"><div><span className="section-kicker">PROFIT FORECAST</span><h2>{selected.name}</h2><p>{selected.client || "Client not specified"} <span>·</span> {prettyDate(selected.eventDate)}</p></div><div className={`status ${selectedMetrics.projectedProfit < 0 ? "at-risk" : ""}`}><span/> {selectedMetrics.projectedProfit < 0 ? "At risk" : "On track"}</div></div><div className="record-actions"><button type="button" className="text-button" onClick={() => { setError(""); setMode("edit-event"); }}><Pencil size={14}/> Edit event & budgets</button><button type="button" className="text-button muted-action" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(selected.id)}`, { action: "archive" }, "PATCH")}><Archive size={14}/> Archive event</button></div><div className="profit-feature"><div><span>Projected profit</span><strong className={selectedMetrics.projectedProfit < 0 ? "negative-text" : ""}>{currency(selectedMetrics.projectedProfit)}</strong><small>{selectedMetrics.margin}% projected margin</small></div><div className="profit-graphic"><TrendingUp size={46} strokeWidth={1.4}/></div></div><div className="finance-row"><div><span>Client quote</span><strong>{currency(selected.quotePaise)}</strong></div><div><span>Planned costs</span><strong>{currency(selectedMetrics.planned)}</strong></div><div><span>Spent so far</span><strong>{currency(selectedMetrics.spent)}</strong></div><div><span>Projected cost</span><strong>{currency(selectedMetrics.projectedCost)}</strong></div></div><div className="formula"><CircleHelp size={16}/><span>Forecast uses the higher of each category budget or paid costs plus unpaid vendor commitments.</span></div></section>
-            <section className="detail-card cost-card"><div className="cost-heading"><div><span className="section-kicker">WHERE THE MONEY GOES</span><h2>Cost breakdown</h2></div><button className="outline-button" onClick={() => { setError(""); setRecordingCommitmentId(null); setMode("expense"); }}><Plus size={16}/> Add expense</button></div><div className="category-list">{CATEGORIES.map((category) => { const { budget, spent, unpaidCommitments, forecast } = categoryForecast(selected, category); const progress = budget ? Math.min(100, (forecast / budget) * 100) : forecast ? 100 : 0; return <div className="category-row" key={category}><div className="category-line"><strong>{category}</strong><span className={forecast > budget ? "overrun" : ""}>{currency(spent)} <em>/ {currency(budget)}</em></span></div><div className="progress"><span className={forecast > budget ? "overrun-fill" : ""} style={{ width: `${progress}%` }}/></div>{unpaidCommitments > 0 && <div className="category-forecast">{currency(unpaidCommitments)} unpaid · {currency(forecast)} forecast</div>}</div>; })}</div></section></div>}
+          {activeItems.length === 0 ? <div className="empty-layout"><div className="empty-card"><div className="empty-icon">{isBakery ? <CakeSlice size={30}/> : <Layers3 size={30}/>}</div><span className="section-kicker">START HERE</span><h2>{isBakery ? "Know the profit on every custom order." : "Make your next event more profitable."}</h2><p>{isBakery ? "Add an order with its selling price and estimated ingredients, labour, packaging, and delivery costs. Record what you actually spend and receive as the order moves forward." : "Add an event with your quote and category budgets. Then record expenses as they happen to see your projected profit update."}</p><button className="primary-button" onClick={() => setMode("event")}><Plus size={18}/> {isBakery ? "Create first order" : "Create first event"}</button></div><div className="how-card"><span className="section-kicker">HOW IT WORKS</span><div className="how-row"><span>01</span><div><strong>Plan</strong><p>{isBakery ? "Set a selling price and estimate each cost." : "Set a quote and budget by category."}</p></div></div><div className="how-row"><span>02</span><div><strong>Track</strong><p>Log each actual expense and customer payment.</p></div></div><div className="how-row"><span>03</span><div><strong>Protect</strong><p>Spot overruns before they eat your margin.</p></div></div></div></div> : <>
+            <div className="section-heading"><div><span className="section-kicker">YOUR PORTFOLIO</span><h2>{isBakery ? "Orders" : "Events"} <span className="count">{activeItems.length}</span></h2></div><span className="subtle">Select {isBakery ? "an order" : "an event"} to inspect its costs</span></div>
+            <div className="event-tabs">{activeItems.map((item) => { const m = metrics(item); return <button key={item.id} className={`event-tab ${selected?.id === item.id ? "selected" : ""}`} onClick={() => setSelectedId(item.id)}><span className="event-tab-icon">{isBakery ? <CakeSlice size={18}/> : <CalendarDays size={18}/>}</span><span><strong>{item.name}</strong><small>{prettyDate(item.eventDate)} · {currency(item.quotePaise)} {isBakery ? "price" : "quote"}</small></span><span className={`tab-profit ${m.projectedProfit < 0 ? "negative" : ""}`}>{currency(m.projectedProfit)} <ArrowRight size={16}/></span></button>; })}</div>
+            {selected && selectedMetrics && <div className="detail-grid"><section className="detail-card"><div className="detail-top"><div><span className="section-kicker">PROFIT FORECAST</span><h2>{selected.name}</h2><p>{selected.client || (isBakery ? "Customer not specified" : "Client not specified")} <span>·</span> {prettyDate(selected.eventDate)}</p></div><div className={`status ${selectedMetrics.projectedProfit < 0 ? "at-risk" : ""}`}><span/> {selectedMetrics.projectedProfit < 0 ? "At risk" : "On track"}</div></div><div className="record-actions"><button type="button" className="text-button" onClick={() => { setError(""); setMode("edit-event"); }}><Pencil size={14}/> {isBakery ? "Edit order & costs" : "Edit event & budgets"}</button><button type="button" className="text-button muted-action" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(selected.id)}`, { action: "archive" }, "PATCH")}><Archive size={14}/> {isBakery ? "Archive order" : "Archive event"}</button></div><div className="profit-feature"><div><span>Projected profit</span><strong className={selectedMetrics.projectedProfit < 0 ? "negative-text" : ""}>{currency(selectedMetrics.projectedProfit)}</strong><small>{selectedMetrics.margin}% projected margin</small></div><div className="profit-graphic"><TrendingUp size={46} strokeWidth={1.4}/></div></div><div className="finance-row"><div><span>{isBakery ? "Order price" : "Client quote"}</span><strong>{currency(selected.quotePaise)}</strong></div><div><span>Planned costs</span><strong>{currency(selectedMetrics.planned)}</strong></div><div><span>Spent so far</span><strong>{currency(selectedMetrics.spent)}</strong></div><div><span>Projected cost</span><strong>{currency(selectedMetrics.projectedCost)}</strong></div></div><div className="formula"><CircleHelp size={16}/><span>Forecast uses the higher of each category budget or paid costs plus unpaid {isBakery ? "supplier" : "vendor"} commitments.</span></div></section>
+            <section className="detail-card cost-card"><div className="cost-heading"><div><span className="section-kicker">WHERE THE MONEY GOES</span><h2>Cost breakdown</h2></div><button className="outline-button" onClick={() => { setError(""); setRecordingCommitmentId(null); setMode("expense"); }}><Plus size={16}/> Add expense</button></div><div className="category-list">{categoriesFor(selected.kind).map((category) => { const { budget, spent, unpaidCommitments, forecast } = categoryForecast(selected, category); const progress = budget ? Math.min(100, (spent / budget) * 100) : spent ? 100 : 0; return <div className="category-row" key={category}><div className="category-line"><strong>{category}</strong><span className={forecast > budget ? "overrun" : ""}>{currency(spent)} <em>/ {currency(budget)}</em></span></div><div className="progress"><span className={forecast > budget ? "overrun-fill" : ""} style={{ width: `${progress}%` }}/></div>{unpaidCommitments > 0 && <div className="category-forecast">{currency(unpaidCommitments)} unpaid · {currency(forecast)} forecast</div>}</div>; })}</div></section></div>}
             {selected && (
               <VendorCommitments key={selected.id} event={selected} onRefresh={load} onRecordPayment={(commitmentId) => { setError(""); setRecordingCommitmentId(commitmentId); setMode("expense"); }}/>
             )}
-            {selected && <section className="expenses-card"><div className="expenses-heading"><div><span className="section-kicker">ACTIVITY</span><h2>Expenses</h2></div><button className="text-button" onClick={() => { setRecordingCommitmentId(null); setMode("expense"); }}>Add expense <ArrowRight size={16}/></button></div>{selected.expenses.length ? <div className="expense-list">{selected.expenses.map((expense) => <div className="expense-row" key={expense.id}><div className="expense-icon"><ArrowDownRight size={18}/></div><div className="expense-description"><strong>{expense.description}</strong><span>{expense.category}{expense.commitmentId ? " · Vendor payment" : ""} · {prettyDate(expense.spentOn)}</span></div><strong>{currency(expense.amountPaise)}</strong><div className="expense-actions"><button type="button" className="icon-button" aria-label={`Edit ${expense.description}`} title="Edit expense" onClick={() => { setError(""); setEditingExpenseId(expense.id); setMode("edit-expense"); }}><Pencil size={15}/></button><button type="button" className="icon-button danger-icon" aria-label={`Remove ${expense.description}`} title="Remove expense" disabled={saving} onClick={() => void removeExpense(expense.id, expense.description)}><Trash2 size={15}/></button></div></div>)}</div> : <div className="no-expenses">No expenses logged yet. Add one as soon as you make a purchase.</div>}</section>}
+            {selected && <section className="expenses-card"><div className="expenses-heading"><div><span className="section-kicker">ACTIVITY</span><h2>Expenses</h2></div><button className="text-button" onClick={() => { setRecordingCommitmentId(null); setMode("expense"); }}>Add expense <ArrowRight size={16}/></button></div>{selected.expenses.length ? <div className="expense-list">{selected.expenses.map((expense) => <div className="expense-row" key={expense.id}><div className="expense-icon"><ArrowDownRight size={18}/></div><div className="expense-description"><strong>{expense.description}</strong><span>{expense.category}{expense.commitmentId ? (isBakery ? " · Supplier payment" : " · Vendor payment") : ""} · {prettyDate(expense.spentOn)}</span></div><strong>{currency(expense.amountPaise)}</strong><div className="expense-actions"><button type="button" className="icon-button" aria-label={`Edit ${expense.description}`} title="Edit expense" onClick={() => { setError(""); setEditingExpenseId(expense.id); setMode("edit-expense"); }}><Pencil size={15}/></button><button type="button" className="icon-button danger-icon" aria-label={`Remove ${expense.description}`} title="Remove expense" disabled={saving} onClick={() => void removeExpense(expense.id, expense.description)}><Trash2 size={15}/></button></div></div>)}</div> : <div className="no-expenses">No expenses logged yet. Add one as soon as you make a purchase.</div>}</section>}
             {selected && selectedMetrics && <section className="payments-card">
               <div className="expenses-heading">
-                <div><span className="section-kicker">CLIENT PAYMENTS</span><h2>Payments received</h2></div>
+                <div><span className="section-kicker">{isBakery ? "CUSTOMER PAYMENTS" : "CLIENT PAYMENTS"}</span><h2>Payments received</h2></div>
                 <button type="button" className="outline-button" onClick={() => { setError(""); setMode("payment"); }}><Plus size={16}/> Record payment</button>
               </div>
               <div className="payment-summary">
-                <div><span>Client quote</span><strong>{currency(selected.quotePaise)}</strong></div>
+                <div><span>{isBakery ? "Order price" : "Client quote"}</span><strong>{currency(selected.quotePaise)}</strong></div>
                 <div><span>Received</span><strong>{currency(selectedMetrics.received)}</strong></div>
                 <div><span>{selectedMetrics.balance < 0 ? "Overpaid" : "Balance due"}</span><strong className={selectedMetrics.balance > 0 ? "balance-due" : "balance-settled"}>{currency(Math.abs(selectedMetrics.balance))}</strong></div>
               </div>
               {selected.payments.length ? <div className="payment-list">{selected.payments.map((payment) => <div className="expense-row" key={payment.id}>
                 <div className="payment-icon"><IndianRupee size={18}/></div>
-                <div className="expense-description"><strong>{payment.note || "Client payment"}</strong><span>Received {prettyDate(payment.receivedOn)}</span></div>
+                <div className="expense-description"><strong>{payment.note || (isBakery ? "Customer payment" : "Client payment")}</strong><span>Received {prettyDate(payment.receivedOn)}</span></div>
                 <strong>{currency(payment.amountPaise)}</strong>
                 <div className="expense-actions">
                   <button type="button" className="icon-button" aria-label={`Edit payment from ${prettyDate(payment.receivedOn)}`} title="Edit payment" onClick={() => { setError(""); setEditingPaymentId(payment.id); setMode("edit-payment"); }}><Pencil size={15}/></button>
                   <button type="button" className="icon-button danger-icon" aria-label={`Remove payment from ${prettyDate(payment.receivedOn)}`} title="Remove payment" disabled={saving} onClick={() => void removePayment(payment.id)}><Trash2 size={15}/></button>
                 </div>
-              </div>)}</div> : <div className="no-expenses">No payments recorded yet. Add a deposit when your client pays you.</div>}
+              </div>)}</div> : <div className="no-expenses">{isBakery ? "No payments recorded yet. Add a deposit when your customer pays you." : "No payments recorded yet. Add a deposit when your client pays you."}</div>}
             </section>}
             {selected && <section className="report-card">
-              <div><span className="section-kicker">EVENT REPORT</span><h2>Share your event numbers</h2><p>Get a printable summary or download the underlying figures as a spreadsheet file.</p></div>
+              <div><span className="section-kicker">{isBakery ? "ORDER REPORT" : "EVENT REPORT"}</span><h2>{isBakery ? "Share your order numbers" : "Share your event numbers"}</h2><p>Get a printable summary or download the underlying figures as a spreadsheet file.</p></div>
               <div className="report-actions">
                 <button type="button" className="outline-button" onClick={() => downloadCsv(selected)}><Download size={16}/> Download CSV</button>
                 <button type="button" className="primary-button" onClick={() => window.print()}><Printer size={16}/> Print / Save PDF</button>
               </div>
             </section>}
           </>}
-          {view === "events" && archivedItems.length > 0 && <section className="archive-section"><div className="section-heading"><div><span className="section-kicker">PAST WORK</span><h2>Archived events <span className="count">{archivedItems.length}</span></h2></div></div><div className="archive-list">{archivedItems.map((item) => <div className="archive-row" key={item.id}><div><strong>{item.name}</strong><span>{prettyDate(item.eventDate)} · {currency(item.quotePaise)} quote</span></div><button type="button" className="outline-button" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(item.id)}`, { action: "restore" }, "PATCH")}><RotateCcw size={14}/> Restore</button></div>)}</div></section>}
+          {(view === "events" || view === "bakery") && archivedItems.length > 0 && <section className="archive-section"><div className="section-heading"><div><span className="section-kicker">PAST WORK</span><h2>{isBakery ? "Archived orders" : "Archived events"} <span className="count">{archivedItems.length}</span></h2></div></div><div className="archive-list">{archivedItems.map((item) => <div className="archive-row" key={item.id}><div><strong>{item.name}</strong><span>{prettyDate(item.eventDate)} · {currency(item.quotePaise)} {isBakery ? "price" : "quote"}</span></div><button type="button" className="outline-button" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(item.id)}`, { action: "restore" }, "PATCH")}><RotateCcw size={14}/> Restore</button></div>)}</div></section>}
         </>}
       </div>
     </main>
-    {(mode === "event" || mode === "edit-event") && <EventModal eventRecord={mode === "edit-event" ? selected : null} error={error} close={() => setMode(null)} saving={saving} submit={(data) => submit(mode === "edit-event" && selected ? `/api/events/${encodeURIComponent(selected.id)}` : "/api/events", data, mode === "edit-event" ? "PATCH" : "POST")} />}
-    {(mode === "expense" || mode === "edit-expense") && selected && <ExpenseModal eventName={selected.name} eventId={selected.id} expense={mode === "edit-expense" ? editingExpense : undefined} commitment={selected.commitments.find((item) => item.id === (mode === "edit-expense" ? editingExpense?.commitmentId : recordingCommitmentId))} error={error} close={() => { setMode(null); setEditingExpenseId(null); setRecordingCommitmentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-expense" && editingExpense ? `/api/expenses/${encodeURIComponent(editingExpense.id)}` : "/api/expenses", data, mode === "edit-expense" ? "PATCH" : "POST")} />}
-    {(mode === "payment" || mode === "edit-payment") && selected && <PaymentModal eventName={selected.name} eventId={selected.id} payment={mode === "edit-payment" ? editingPayment : undefined} error={error} close={() => { setMode(null); setEditingPaymentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-payment" && editingPayment ? `/api/payments/${encodeURIComponent(editingPayment.id)}` : "/api/payments", data, mode === "edit-payment" ? "PATCH" : "POST")} />}
+    {(mode === "event" || mode === "edit-event") && <EventModal kind={workspaceKind} eventRecord={mode === "edit-event" ? selected : null} error={error} close={() => setMode(null)} saving={saving} submit={(data) => submit(mode === "edit-event" && selected ? `/api/events/${encodeURIComponent(selected.id)}` : "/api/events", data, mode === "edit-event" ? "PATCH" : "POST")} />}
+    {(mode === "expense" || mode === "edit-expense") && selected && <ExpenseModal kind={selected.kind} eventName={selected.name} eventId={selected.id} expense={mode === "edit-expense" ? editingExpense : undefined} commitment={selected.commitments.find((item) => item.id === (mode === "edit-expense" ? editingExpense?.commitmentId : recordingCommitmentId))} error={error} close={() => { setMode(null); setEditingExpenseId(null); setRecordingCommitmentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-expense" && editingExpense ? `/api/expenses/${encodeURIComponent(editingExpense.id)}` : "/api/expenses", data, mode === "edit-expense" ? "PATCH" : "POST")} />}
+    {(mode === "payment" || mode === "edit-payment") && selected && <PaymentModal kind={selected.kind} eventName={selected.name} eventId={selected.id} payment={mode === "edit-payment" ? editingPayment : undefined} error={error} close={() => { setMode(null); setEditingPaymentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-payment" && editingPayment ? `/api/payments/${encodeURIComponent(editingPayment.id)}` : "/api/payments", data, mode === "edit-payment" ? "PATCH" : "POST")} />}
   </div>{selected && <EventReport event={selected} />}</>;
 }
 
@@ -183,21 +189,91 @@ function Metric({ icon, label, value, note, tone }: { icon: React.ReactNode; lab
   return <div className="metric-card"><div className={`metric-icon ${tone}`}>{icon}</div><span>{label}</span><strong>{value}</strong><small>{note}</small></div>;
 }
 
-function EventModal({ eventRecord, error, close, saving, submit }: { eventRecord: EventRecord | null; error: string; close: () => void; saving: boolean; submit: (data: unknown) => void }) {
-  const [name, setName] = useState(eventRecord?.name ?? ""); const [client, setClient] = useState(eventRecord?.client ?? ""); const [eventDate, setDate] = useState(eventRecord?.eventDate ?? today()); const [quote, setQuote] = useState(eventRecord ? String(eventRecord.quotePaise / 100) : "");
-  const [budgets, setBudgets] = useState<Record<Category, string>>(Object.fromEntries(CATEGORIES.map((category) => [category, eventRecord ? String((eventRecord.budgets.find((row) => row.category === category)?.plannedPaise ?? 0) / 100) : ""])) as Record<Category, string>);
-  const planned = CATEGORIES.reduce((n, c) => n + (Number(budgets[c]) || 0), 0);
-  function onSubmit(event: FormEvent) { event.preventDefault(); submit({ name, client, eventDate, quote: Number(quote), budgets: Object.fromEntries(CATEGORIES.map((category) => [category, Number(budgets[category]) || 0])) }); }
-  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><form className="modal" onSubmit={onSubmit}><div className="modal-header"><div><span className="section-kicker">{eventRecord ? "EDIT EVENT" : "NEW EVENT"}</span><h2>{eventRecord ? "Edit event & budgets" : "Plan your profit"}</h2><p>{eventRecord ? "Update your quote and estimated costs." : "Start with your quote and estimated costs."}</p></div><button type="button" className="icon-button" onClick={close} aria-label="Close"><X size={20}/></button></div>{error && <div role="alert" className="modal-error">{error}</div>}<div className="modal-body"><div className="field"><label htmlFor="event-name">Event name</label><input id="event-name" required maxLength={100} placeholder="e.g. Sharma wedding reception" value={name} onChange={(e) => setName(e.target.value)}/></div><div className="two-fields"><div className="field"><label htmlFor="client">Client <span>optional</span></label><input id="client" maxLength={100} placeholder="Client name" value={client} onChange={(e) => setClient(e.target.value)}/></div><div className="field"><label htmlFor="event-date">Event date</label><input id="event-date" type="date" required value={eventDate} onChange={(e) => setDate(e.target.value)}/></div></div><div className="field"><label htmlFor="quote">Client quote (₹)</label><input id="quote" type="number" min="1" step="0.01" required placeholder="50000" value={quote} onChange={(e) => setQuote(e.target.value)}/></div><div className="modal-divider"/><div className="budget-title"><div><strong>Planned costs</strong><span>Estimate each category in rupees</span></div><span>{currency(Math.round(planned * 100))}</span></div><div className="budget-grid">{CATEGORIES.map((category) => <div className="field" key={category}><label htmlFor={`budget-${category}`}>{category}</label><input id={`budget-${category}`} type="number" min="0" step="0.01" placeholder="0" value={budgets[category]} onChange={(e) => setBudgets({ ...budgets, [category]: e.target.value })}/></div>)}</div><div className="estimate"><span>Initial estimated profit</span><strong>{currency(Math.round(((Number(quote) || 0) - planned) * 100))}</strong></div></div><div className="modal-actions"><button type="button" className="cancel-button" onClick={close}>Cancel</button><button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving…" : eventRecord ? "Save changes" : "Create event"} <ArrowRight size={17}/></button></div></form></div>;
+function EventModal({ kind, eventRecord, error, close, saving, submit }: {
+  kind: BusinessKind;
+  eventRecord: EventRecord | null;
+  error: string;
+  close: () => void;
+  saving: boolean;
+  submit: (data: unknown) => void;
+}) {
+  const recordKind = eventRecord?.kind ?? kind;
+  const isBakery = recordKind === "bakery";
+  const categories = categoriesFor(recordKind);
+  const [name, setName] = useState(eventRecord?.name ?? "");
+  const [client, setClient] = useState(eventRecord?.client ?? "");
+  const [eventDate, setDate] = useState(eventRecord?.eventDate ?? today());
+  const [quote, setQuote] = useState(eventRecord ? String(eventRecord.quotePaise / 100) : "");
+  const [budgets, setBudgets] = useState<Record<string, string>>(Object.fromEntries(categories.map((category) => [category,
+    eventRecord ? String((eventRecord.budgets.find((row) => row.category === category)?.plannedPaise ?? 0) / 100) : ""] )));
+  const planned = categories.reduce((sum, category) => sum + (Number(budgets[category]) || 0), 0);
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    submit({ kind: recordKind, name, client, eventDate, quote: Number(quote),
+      budgets: Object.fromEntries(categories.map((category) => [category, Number(budgets[category]) || 0])) });
+  }
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
+    <form className="modal" onSubmit={onSubmit}>
+      <div className="modal-header"><div>
+        <span className="section-kicker">{isBakery ? eventRecord ? "EDIT ORDER" : "NEW BAKERY ORDER" : eventRecord ? "EDIT EVENT" : "NEW EVENT"}</span>
+        <h2>{eventRecord ? isBakery ? "Edit order & costs" : "Edit event & budgets" : "Plan your profit"}</h2>
+        <p>{isBakery ? "Price this custom order before you commit to it." : "Start with your quote and estimated costs."}</p>
+      </div><button type="button" className="icon-button" onClick={close} aria-label="Close"><X size={20}/></button></div>
+      {error && <div role="alert" className="modal-error">{error}</div>}
+      <div className="modal-body">
+        <div className="field"><label htmlFor="event-name">{isBakery ? "Order name" : "Event name"}</label><input id="event-name" required maxLength={100} placeholder={isBakery ? "e.g. Chocolate birthday cake" : "e.g. Sharma wedding reception"} value={name} onChange={(event) => setName(event.target.value)}/></div>
+        <div className="two-fields">
+          <div className="field"><label htmlFor="client">{isBakery ? "Customer" : "Client"} <span>optional</span></label><input id="client" maxLength={100} placeholder={isBakery ? "Customer name" : "Client name"} value={client} onChange={(event) => setClient(event.target.value)}/></div>
+          <div className="field"><label htmlFor="event-date">{isBakery ? "Delivery date" : "Event date"}</label><input id="event-date" type="date" required value={eventDate} onChange={(event) => setDate(event.target.value)}/></div>
+        </div>
+        <div className="field"><label htmlFor="quote">{isBakery ? "Selling price (₹)" : "Client quote (₹)"}</label><input id="quote" type="number" min="1" step="0.01" required placeholder={isBakery ? "2500" : "50000"} value={quote} onChange={(event) => setQuote(event.target.value)}/></div>
+        <div className="modal-divider"/>
+        <div className="budget-title"><div><strong>Planned costs</strong><span>Estimate each category in rupees</span></div><span>{currency(Math.round(planned * 100))}</span></div>
+        <div className="budget-grid">{categories.map((category) => <div className="field" key={category}><label htmlFor={`budget-${category}`}>{category}</label><input id={`budget-${category}`} type="number" min="0" step="0.01" placeholder="0" value={budgets[category]} onChange={(event) => setBudgets({ ...budgets, [category]: event.target.value })}/></div>)}</div>
+        <div className="estimate"><span>Initial estimated profit</span><strong>{currency(Math.round(((Number(quote) || 0) - planned) * 100))}</strong></div>
+      </div>
+      <div className="modal-actions"><button type="button" className="cancel-button" onClick={close}>Cancel</button><button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving…" : eventRecord ? "Save changes" : isBakery ? "Create order" : "Create event"} <ArrowRight size={17}/></button></div>
+    </form>
+  </div>;
 }
 
-function ExpenseModal({ eventName, eventId, expense, commitment, error, close, saving, submit }: { eventName: string; eventId: string; expense?: EventRecord["expenses"][number]; commitment?: EventRecord["commitments"][number]; error: string; close: () => void; saving: boolean; submit: (data: unknown) => void }) {
-  const [description, setDescription] = useState(expense?.description ?? (commitment ? `Payment to ${commitment.vendor}` : "")); const [category, setCategory] = useState<Category>(commitment?.category ?? expense?.category ?? "Flowers"); const [amount, setAmount] = useState(expense ? String(expense.amountPaise / 100) : ""); const [spentOn, setSpentOn] = useState(expense?.spentOn ?? today());
-  function onSubmit(event: FormEvent) { event.preventDefault(); submit({ eventId, commitmentId: commitment?.id ?? null, description, category, amount: Number(amount), spentOn }); }
-  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><form className="modal compact" onSubmit={onSubmit}><div className="modal-header"><div><span className="section-kicker">{commitment ? "VENDOR PAYMENT" : expense ? "CORRECT A COST" : "RECORD A COST"}</span><h2>{expense ? "Edit expense" : commitment ? "Record vendor payment" : "Add expense"}</h2><p>{eventName}</p></div><button type="button" className="icon-button" onClick={close} aria-label="Close"><X size={20}/></button></div>{error && <div role="alert" className="modal-error">{error}</div>}<div className="modal-body">{commitment && <p className="payment-help">This payment reduces what you still owe {commitment.vendor} and appears once in Expenses.</p>}<div className="field"><label htmlFor="description">What did you pay for?</label><input id="description" required maxLength={160} placeholder="e.g. Fresh marigold flowers" value={description} onChange={(e) => setDescription(e.target.value)}/></div><div className="two-fields"><div className="field"><label htmlFor="category">Category</label><select id="category" value={category} disabled={!!commitment} onChange={(e) => setCategory(e.target.value as Category)}>{CATEGORIES.map((item) => <option key={item}>{item}</option>)}</select></div><div className="field"><label htmlFor="amount">Amount (₹)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="2500" value={amount} onChange={(e) => setAmount(e.target.value)}/></div></div><div className="field"><label htmlFor="spent-on">Date paid</label><input id="spent-on" type="date" required value={spentOn} onChange={(e) => setSpentOn(e.target.value)}/></div></div><div className="modal-actions"><button type="button" className="cancel-button" onClick={close}>Cancel</button><button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving…" : expense ? "Save changes" : commitment ? "Record payment" : "Save expense"} <Check size={17}/></button></div></form></div>;
+function ExpenseModal({ kind, eventName, eventId, expense, commitment, error, close, saving, submit }: {
+  kind: BusinessKind;
+  eventName: string;
+  eventId: string;
+  expense?: EventRecord["expenses"][number];
+  commitment?: EventRecord["commitments"][number];
+  error: string;
+  close: () => void;
+  saving: boolean;
+  submit: (data: unknown) => void;
+}) {
+  const categories = categoriesFor(kind);
+  const [description, setDescription] = useState(expense?.description ?? (commitment ? `Payment to ${commitment.vendor}` : ""));
+  const [category, setCategory] = useState<Category>(commitment?.category ?? expense?.category ?? categories[0]);
+  const [amount, setAmount] = useState(expense ? String(expense.amountPaise / 100) : "");
+  const [spentOn, setSpentOn] = useState(expense?.spentOn ?? today());
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    submit({ eventId, commitmentId: commitment?.id ?? null, description, category, amount: Number(amount), spentOn });
+  }
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
+    <form className="modal compact" onSubmit={onSubmit}>
+      <div className="modal-header"><div><span className="section-kicker">{commitment ? kind === "bakery" ? "SUPPLIER PAYMENT" : "VENDOR PAYMENT" : expense ? "CORRECT A COST" : "RECORD A COST"}</span><h2>{expense ? "Edit expense" : commitment ? kind === "bakery" ? "Record supplier payment" : "Record vendor payment" : "Add expense"}</h2><p>{eventName}</p></div><button type="button" className="icon-button" onClick={close} aria-label="Close"><X size={20}/></button></div>
+      {error && <div role="alert" className="modal-error">{error}</div>}
+      <div className="modal-body">
+        {commitment && <p className="payment-help">This payment reduces what you still owe {commitment.vendor} and appears once in Expenses.</p>}
+        <div className="field"><label htmlFor="description">What did you pay for?</label><input id="description" required maxLength={160} placeholder={kind === "bakery" ? "e.g. Chocolate and cake boxes" : "e.g. Fresh marigold flowers"} value={description} onChange={(event) => setDescription(event.target.value)}/></div>
+        <div className="two-fields"><div className="field"><label htmlFor="category">Category</label><select id="category" value={category} disabled={!!commitment} onChange={(event) => setCategory(event.target.value as Category)}>{categories.map((item) => <option key={item}>{item}</option>)}</select></div><div className="field"><label htmlFor="amount">Amount (₹)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="2500" value={amount} onChange={(event) => setAmount(event.target.value)}/></div></div>
+        <div className="field"><label htmlFor="spent-on">Date paid</label><input id="spent-on" type="date" required value={spentOn} onChange={(event) => setSpentOn(event.target.value)}/></div>
+      </div>
+      <div className="modal-actions"><button type="button" className="cancel-button" onClick={close}>Cancel</button><button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving…" : expense ? "Save changes" : commitment ? "Record payment" : "Save expense"} <Check size={17}/></button></div>
+    </form>
+  </div>;
 }
 
-function PaymentModal({ eventName, eventId, payment, error, close, saving, submit }: {
+function PaymentModal({ kind, eventName, eventId, payment, error, close, saving, submit }: {
+  kind: BusinessKind;
   eventName: string;
   eventId: string;
   payment?: EventRecord["payments"][number];
@@ -218,12 +294,12 @@ function PaymentModal({ eventName, eventId, payment, error, close, saving, submi
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
     <form className="modal compact" onSubmit={onSubmit}>
       <div className="modal-header">
-        <div><span className="section-kicker">CLIENT PAYMENTS</span><h2>{payment ? "Edit payment" : "Record payment"}</h2><p>{eventName}</p></div>
+        <div><span className="section-kicker">{kind === "bakery" ? "CUSTOMER PAYMENTS" : "CLIENT PAYMENTS"}</span><h2>{payment ? "Edit payment" : "Record payment"}</h2><p>{eventName}</p></div>
         <button type="button" className="icon-button" onClick={close} aria-label="Close"><X size={20}/></button>
       </div>
       {error && <div role="alert" className="modal-error">{error}</div>}
       <div className="modal-body">
-        <p className="payment-help">Record money already received from your client. This does not collect a payment.</p>
+        <p className="payment-help">Record money already received from your {kind === "bakery" ? "customer" : "client"}. This does not collect a payment.</p>
         <div className="two-fields">
           <div className="field"><label htmlFor="payment-amount">Amount received (₹)</label><input id="payment-amount" type="number" min="0.01" step="0.01" required placeholder="10000" value={amount} onChange={(event) => setAmount(event.target.value)}/></div>
           <div className="field"><label htmlFor="payment-date">Date received</label><input id="payment-date" type="date" required value={receivedOn} onChange={(event) => setReceivedOn(event.target.value)}/></div>

@@ -1,6 +1,6 @@
 # Event Profit Watch
 
-A small profit tracker for independent event decorators. Plan an event's quote and category budgets, record expenses as they happen, and see projected profit before the job is finished.
+A small profit tracker for independent event decorators, with a custom-order bakery workspace in beta. Plan a quote or selling price, estimate costs, record spending and payments, and see projected profit before the work is finished.
 
 [Live beta](https://event-profit-watch.kushalkachari993.chatgpt.site/)
 
@@ -14,8 +14,9 @@ A small profit tracker for independent event decorators. Plan an event's quote a
 - View active spending, projected cost, profit, margin, and client balance due. Money with paise is shown exactly on the dashboard. Forecast cost uses the higher of planned budget or actual spending plus unpaid commitments in each category.
 - Record client deposits and other payments, correct or remove entries, and see the balance due for each event. Payments are records of money received outside the app.
 - Print or save an event financial report as PDF, or download the same figures and transaction lists as CSV.
+- Switch to Bakery orders to price custom orders with Ingredients, Labour, Packaging, Delivery, Overheads, and Other cost estimates. Track supplier commitments, actual expenses, customer deposits and balances, and export an order report. Event and bakery records remain separate.
 
-This is an MVP for testing the workflow with decorators. It does not yet include receipts, payment collection, invoicing, or billing.
+This is an MVP for testing the workflow with decorators and custom-order bakeries. Bakery costs are entered per order; recipe-level ingredient costing and inventory are not yet included. The app also does not include receipts, payment collection, invoicing, or billing.
 
 ## Stack
 
@@ -32,6 +33,7 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_outgoing_masked_marvel.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_useful_blonde_phantom.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0003_purple_corsair.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0004_broad_wonder_man.sql
 npm run dev
 ```
 

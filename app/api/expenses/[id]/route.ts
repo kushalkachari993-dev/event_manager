@@ -2,13 +2,13 @@ import { and, eq } from "drizzle-orm";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
 import { commitments, events, expenses } from "../../../../db/schema";
-import { isCategory, toPaise } from "../../../../lib/finance";
+import { isCategoryFor, toPaise } from "../../../../lib/finance";
 
 type Context = { params: Promise<{ id: string }> };
 
 async function ownedExpense(id: string, ownerId: string) {
   const db = getDb();
-  const [row] = await db.select({ id: expenses.id, eventId: expenses.eventId, commitmentId: expenses.commitmentId })
+  const [row] = await db.select({ id: expenses.id, eventId: expenses.eventId, commitmentId: expenses.commitmentId, kind: events.kind })
     .from(expenses).innerJoin(events, eq(expenses.eventId, events.id))
     .where(and(eq(expenses.id, id), eq(events.ownerId, ownerId))).limit(1);
   return row;
@@ -28,7 +28,7 @@ export async function PATCH(request: Request, { params }: Context) {
     const category = commitment?.category ?? data.category;
     const amountPaise = toPaise(data.amount);
     const spentOn = typeof data.spentOn === "string" ? data.spentOn : "";
-    if (!description || description.length > 160 || !isCategory(category) || amountPaise === null || amountPaise === 0
+    if (!description || description.length > 160 || !isCategoryFor(category, owned.kind === "bakery" ? "bakery" : "event") || amountPaise === null || amountPaise === 0
       || !/^\d{4}-\d{2}-\d{2}$/.test(spentOn) || Number.isNaN(Date.parse(`${spentOn}T12:00:00Z`))) {
       return Response.json({ error: "Enter a description, category, amount, and date." }, { status: 400 });
     }

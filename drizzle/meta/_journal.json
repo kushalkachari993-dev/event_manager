@@ -29,6 +29,13 @@
       "when": 1791785264043,
       "tag": "0003_purple_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791869075339,
+      "tag": "0004_broad_wonder_man",
+      "breakpoints": true
     }
   ]
 }

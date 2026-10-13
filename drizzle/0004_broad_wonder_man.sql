@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `kind` text DEFAULT 'event' NOT NULL;

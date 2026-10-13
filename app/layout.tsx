@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Event Profit Watch",
-  description: "Track event costs and know your projected profit before the event ends.",
+  description: "Track event and custom bakery order costs, payments, and projected profit.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
