@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { categoryForecast, metrics } from "../lib/finance.ts";
+import { categoriesFor, categoryForecast, isCategoryFor, metrics } from "../lib/finance.ts";
 
 function eventWith({ budget = 0, agreed = 0, vendorPayments = [], otherExpenses = [] } = {}) {
   return {
-    id: "event", name: "Test event", client: "", eventDate: "2026-10-20", quotePaise: 50000,
+    id: "event", kind: "event", name: "Test event", client: "", eventDate: "2026-10-20", quotePaise: 50000,
     createdAt: "", archivedAt: null, payments: [],
     budgets: [{ category: "Flowers", plannedPaise: budget }],
     commitments: agreed ? [{ id: "vendor", vendor: "Florist", category: "Flowers", agreedPaise: agreed, dueOn: "2026-10-18" }] : [],
@@ -34,4 +34,18 @@ test("overpayment and other spending increase forecast by actual expense", () =>
   const event = eventWith({ agreed: 12000, vendorPayments: [13000], otherExpenses: [500] });
   assert.equal(metrics(event).unpaidCommitments, 0);
   assert.equal(metrics(event).projectedCost, 13500);
+});
+
+test("bakery orders use ingredient costs without event-only categories", () => {
+  const order = {
+    ...eventWith(), kind: "bakery", quotePaise: 250000,
+    budgets: [{ category: "Ingredients", plannedPaise: 80000 }, { category: "Packaging", plannedPaise: 10000 }],
+    commitments: [{ id: "supplier", vendor: "Chocolate supplier", category: "Ingredients", agreedPaise: 110000, dueOn: "2026-10-18" }],
+    expenses: [{ id: "box", commitmentId: null, category: "Packaging", description: "Cake box", amountPaise: 12000, spentOn: "2026-10-12" }],
+  };
+  assert.deepEqual(categoriesFor("bakery"), ["Ingredients", "Labour", "Packaging", "Delivery", "Overheads", "Other"]);
+  assert.equal(isCategoryFor("Flowers", "bakery"), false);
+  assert.equal(isCategoryFor("Ingredients", "event"), false);
+  assert.equal(metrics(order).projectedCost, 122000);
+  assert.equal(metrics(order).projectedProfit, 128000);
 });

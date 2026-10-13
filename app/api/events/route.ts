@@ -2,7 +2,7 @@ import { eq, desc, inArray } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
 import { budgets, commitments, events, expenses, payments } from "../../../db/schema";
-import { CATEGORIES, toPaise } from "../../../lib/finance";
+import { categoriesFor, toPaise } from "../../../lib/finance";
 
 export async function GET() {
   const user = await getChatGPTUser();
@@ -35,19 +35,21 @@ export async function POST(request: Request) {
   if (!user) return Response.json({ error: "Sign in required" }, { status: 401 });
   try {
     const data = await request.json() as Record<string, unknown>;
+    const kind = data.kind === "bakery" ? "bakery" : data.kind === "event" || data.kind == null ? "event" : null;
+    if (!kind) return Response.json({ error: "Choose a valid workspace." }, { status: 400 });
     const name = typeof data.name === "string" ? data.name.trim() : "";
     const client = typeof data.client === "string" ? data.client.trim() : "";
     const eventDate = typeof data.eventDate === "string" ? data.eventDate : "";
     const quotePaise = toPaise(data.quote);
     const inputBudgets = data.budgets && typeof data.budgets === "object" ? data.budgets as Record<string, unknown> : {};
-    const plans = CATEGORIES.map((category) => ({ category, plannedPaise: toPaise(inputBudgets[category]) }));
+    const plans = categoriesFor(kind).map((category) => ({ category, plannedPaise: toPaise(inputBudgets[category]) }));
     if (!name || name.length > 100 || client.length > 100 || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate) || quotePaise === null || quotePaise === 0 || plans.some((row) => row.plannedPaise === null)) {
-      return Response.json({ error: "Enter an event name, date, quote, and valid category budgets." }, { status: 400 });
+      return Response.json({ error: kind === "bakery" ? "Enter an order name, delivery date, price, and valid cost estimates." : "Enter an event name, date, quote, and valid category budgets." }, { status: 400 });
     }
     const id = crypto.randomUUID();
     const db = getDb();
     await db.batch([
-      db.insert(events).values({ id, ownerId: user.userId, name, client, eventDate, quotePaise, createdAt: new Date().toISOString() }),
+      db.insert(events).values({ id, ownerId: user.userId, kind, name, client, eventDate, quotePaise, createdAt: new Date().toISOString() }),
       db.insert(budgets).values(plans.map((row) => ({ id: crypto.randomUUID(), eventId: id, category: row.category, plannedPaise: row.plannedPaise! }))),
     ]);
     return Response.json({ id }, { status: 201 });

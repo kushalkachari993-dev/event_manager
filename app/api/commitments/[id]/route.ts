@@ -2,13 +2,13 @@ import { and, eq } from "drizzle-orm";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
 import { commitments, events, expenses } from "../../../../db/schema";
-import { isCategory, toPaise } from "../../../../lib/finance";
+import { isCategoryFor, toPaise } from "../../../../lib/finance";
 
 type Context = { params: Promise<{ id: string }> };
 
 async function ownedCommitment(id: string, ownerId: string) {
   const db = getDb();
-  const [row] = await db.select({ id: commitments.id }).from(commitments)
+  const [row] = await db.select({ id: commitments.id, kind: events.kind }).from(commitments)
     .innerJoin(events, eq(commitments.eventId, events.id))
     .where(and(eq(commitments.id, id), eq(events.ownerId, ownerId))).limit(1);
   return row;
@@ -19,13 +19,14 @@ export async function PATCH(request: Request, { params }: Context) {
   if (!user) return Response.json({ error: "Sign in required" }, { status: 401 });
   try {
     const { id } = await params;
-    if (!await ownedCommitment(id, user.userId)) return Response.json({ error: "Vendor commitment not found" }, { status: 404 });
+    const owned = await ownedCommitment(id, user.userId);
+    if (!owned) return Response.json({ error: "Vendor commitment not found" }, { status: 404 });
     const data = await request.json() as Record<string, unknown>;
     const vendor = typeof data.vendor === "string" ? data.vendor.trim() : "";
     const category = data.category;
     const agreedPaise = toPaise(data.agreed);
     const dueOn = typeof data.dueOn === "string" ? data.dueOn : "";
-    if (!vendor || vendor.length > 100 || !isCategory(category) || agreedPaise === null || agreedPaise === 0
+    if (!vendor || vendor.length > 100 || !isCategoryFor(category, owned.kind === "bakery" ? "bakery" : "event") || agreedPaise === null || agreedPaise === 0
       || !/^\d{4}-\d{2}-\d{2}$/.test(dueOn) || Number.isNaN(Date.parse(`${dueOn}T12:00:00Z`))) {
       return Response.json({ error: "Enter a vendor, category, agreed cost, and due date." }, { status: 400 });
     }

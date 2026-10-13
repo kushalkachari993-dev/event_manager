@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { ArrowRight, Check, Pencil, Plus, Trash2, X } from "lucide-react";
-import { CATEGORIES, formatCurrency, metrics, vendorPaidPaise, type Category, type EventRecord } from "../lib/finance";
+import { categoriesFor, formatCurrency, metrics, vendorPaidPaise, type Category, type EventRecord } from "../lib/finance";
 
 type Commitment = EventRecord["commitments"][number];
 
@@ -55,10 +55,10 @@ export default function VendorCommitments({ event, onRefresh, onRecordPayment }:
 
   return <section className="expenses-card commitments-card">
     <div className="expenses-heading">
-      <div><span className="section-kicker">UPCOMING COSTS</span><h2>Vendor commitments</h2></div>
+      <div><span className="section-kicker">UPCOMING COSTS</span><h2>{event.kind === "bakery" ? "Supplier commitments" : "Vendor commitments"}</h2></div>
       <button type="button" className="outline-button" onClick={() => { setEditing(null); setError(""); setOpen(true); }}><Plus size={16}/> Add commitment</button>
     </div>
-    <p className="commitment-summary">{unpaid ? <><strong>{formatCurrency(unpaid)}</strong> still owed to vendors and included in your profit forecast.</> : "Record agreed vendor costs before you pay them so your forecast stays realistic."}</p>
+    <p className="commitment-summary">{unpaid ? <><strong>{formatCurrency(unpaid)}</strong> still owed to {event.kind === "bakery" ? "suppliers" : "vendors"} and included in your profit forecast.</> : `Record agreed ${event.kind === "bakery" ? "supplier" : "vendor"} costs before you pay them so your forecast stays realistic.`}</p>
     {error && !open && <div role="alert" className="error-banner">{error}<button onClick={() => setError("")} aria-label="Dismiss error"><X size={16}/></button></div>}
     {event.commitments.length ? <div className="commitment-list">{event.commitments.map((commitment) => {
       const paid = vendorPaidPaise(event, commitment.id);
@@ -73,13 +73,13 @@ export default function VendorCommitments({ event, onRefresh, onRecordPayment }:
           <button type="button" className="icon-button danger-icon" aria-label={`Remove commitment for ${commitment.vendor}`} disabled={saving} onClick={() => void remove(commitment)}><Trash2 size={15}/></button>
         </div>
       </div>;
-    })}</div> : <div className="no-expenses">No vendor commitments yet. Add an agreed cost to see its impact before payment.</div>}
-    {open && <CommitmentModal key={editing?.id ?? "new"} eventName={event.name} commitment={editing} error={error} saving={saving} close={() => { setOpen(false); setEditing(null); setError(""); }} save={save}/>}
+    })}</div> : <div className="no-expenses">No {event.kind === "bakery" ? "supplier" : "vendor"} commitments yet. Add an agreed cost to see its impact before payment.</div>}
+    {open && <CommitmentModal key={editing?.id ?? "new"} event={event} commitment={editing} error={error} saving={saving} close={() => { setOpen(false); setEditing(null); setError(""); }} save={save}/>}
   </section>;
 }
 
-function CommitmentModal({ eventName, commitment, error, saving, close, save }: {
-  eventName: string;
+function CommitmentModal({ event, commitment, error, saving, close, save }: {
+  event: EventRecord;
   commitment: Commitment | null;
   error: string;
   saving: boolean;
@@ -87,19 +87,19 @@ function CommitmentModal({ eventName, commitment, error, saving, close, save }: 
   save: (data: { vendor: string; category: Category; agreed: number; dueOn: string }) => void;
 }) {
   const [vendor, setVendor] = useState(commitment?.vendor ?? "");
-  const [category, setCategory] = useState<Category>(commitment?.category ?? "Flowers");
+  const [category, setCategory] = useState<Category>(commitment?.category ?? categoriesFor(event.kind)[0]);
   const [agreed, setAgreed] = useState(commitment ? String(commitment.agreedPaise / 100) : "");
   const [dueOn, setDueOn] = useState(commitment?.dueOn ?? today());
   function onSubmit(event: FormEvent) { event.preventDefault(); save({ vendor, category, agreed: Number(agreed), dueOn }); }
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
     <form className="modal compact" onSubmit={onSubmit}>
-      <div className="modal-header"><div><span className="section-kicker">VENDOR COSTS</span><h2>{commitment ? "Edit commitment" : "Add commitment"}</h2><p>{eventName}</p></div><button type="button" className="icon-button" onClick={close} aria-label="Close"><X size={20}/></button></div>
+      <div className="modal-header"><div><span className="section-kicker">{event.kind === "bakery" ? "SUPPLIER COSTS" : "VENDOR COSTS"}</span><h2>{commitment ? "Edit commitment" : "Add commitment"}</h2><p>{event.name}</p></div><button type="button" className="icon-button" onClick={close} aria-label="Close"><X size={20}/></button></div>
       {error && <div role="alert" className="modal-error">{error}</div>}
       <div className="modal-body">
         <p className="payment-help">An agreed cost affects the forecast now. Record payments against it as they happen.</p>
-        <div className="field"><label htmlFor="vendor-name">Vendor name</label><input id="vendor-name" required maxLength={100} placeholder="e.g. Sharma Flowers" value={vendor} onChange={(event) => setVendor(event.target.value)}/></div>
+        <div className="field"><label htmlFor="vendor-name">{event.kind === "bakery" ? "Supplier name" : "Vendor name"}</label><input id="vendor-name" required maxLength={100} placeholder={event.kind === "bakery" ? "e.g. Local flour supplier" : "e.g. Sharma Flowers"} value={vendor} onChange={(event) => setVendor(event.target.value)}/></div>
         <div className="two-fields">
-          <div className="field"><label htmlFor="commitment-category">Category</label><select id="commitment-category" value={category} onChange={(event) => setCategory(event.target.value as Category)}>{CATEGORIES.map((item) => <option key={item}>{item}</option>)}</select></div>
+          <div className="field"><label htmlFor="commitment-category">Category</label><select id="commitment-category" value={category} onChange={(event) => setCategory(event.target.value as Category)}>{categoriesFor(event.kind).map((item) => <option key={item}>{item}</option>)}</select></div>
           <div className="field"><label htmlFor="commitment-agreed">Agreed cost (₹)</label><input id="commitment-agreed" type="number" min="0.01" step="0.01" required placeholder="12000" value={agreed} onChange={(event) => setAgreed(event.target.value)}/></div>
         </div>
         <div className="field"><label htmlFor="commitment-due">Payment due date</label><input id="commitment-due" type="date" required value={dueOn} onChange={(event) => setDueOn(event.target.value)}/></div>
