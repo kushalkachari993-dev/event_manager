@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
 import { budgets, events } from "../../../../db/schema";
-import { categoriesFor, toPaise } from "../../../../lib/finance";
+import { categoriesFor, isOrderStatus, toPaise } from "../../../../lib/finance";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -12,13 +12,21 @@ export async function PATCH(request: Request, { params }: Context) {
   try {
     const { id } = await params;
     const db = getDb();
-    const [owned] = await db.select({ id: events.id, kind: events.kind }).from(events)
+    const [owned] = await db.select({ id: events.id, kind: events.kind, archivedAt: events.archivedAt }).from(events)
       .where(and(eq(events.id, id), eq(events.ownerId, user.userId))).limit(1);
     if (!owned) return Response.json({ error: "Event not found" }, { status: 404 });
 
     const data = await request.json() as Record<string, unknown>;
     if (data.action === "archive" || data.action === "restore") {
       await db.update(events).set({ archivedAt: data.action === "archive" ? new Date().toISOString() : null })
+        .where(and(eq(events.id, id), eq(events.ownerId, user.userId)));
+      return Response.json({ ok: true });
+    }
+    if (data.action === "set-order-status") {
+      if (owned.kind !== "bakery" || owned.archivedAt || !isOrderStatus(data.status)) {
+        return Response.json({ error: "Choose a valid stage for an active bakery order." }, { status: 400 });
+      }
+      await db.update(events).set({ orderStatus: data.status })
         .where(and(eq(events.id, id), eq(events.ownerId, user.userId)));
       return Response.json({ ok: true });
     }

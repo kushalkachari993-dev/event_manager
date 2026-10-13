@@ -2,6 +2,15 @@ export const CATEGORIES = ["Flowers", "Materials", "Labour", "Rentals", "Transpo
 export const BAKERY_CATEGORIES = ["Ingredients", "Labour", "Packaging", "Delivery", "Overheads", "Other"] as const;
 const ALL_CATEGORIES: readonly string[] = [...CATEGORIES, ...BAKERY_CATEGORIES];
 export type BusinessKind = "event" | "bakery";
+export const ORDER_STAGES = ["enquiry", "quoted", "confirmed", "in_production", "ready", "delivered"] as const;
+export type OrderStatus = (typeof ORDER_STAGES)[number];
+export const ORDER_STAGE_LABELS: Record<OrderStatus, string> = {
+  enquiry: "Enquiry", quoted: "Quoted", confirmed: "Confirmed",
+  in_production: "In production", ready: "Ready", delivered: "Delivered",
+};
+export function isOrderStatus(value: unknown): value is OrderStatus {
+  return typeof value === "string" && ORDER_STAGES.some((stage) => stage === value);
+}
 export type Category = (typeof CATEGORIES)[number] | (typeof BAKERY_CATEGORIES)[number];
 
 export function categoriesFor(kind: BusinessKind): readonly Category[] {
@@ -32,6 +41,7 @@ export function formatCurrency(paise: number): string {
 export type EventRecord = {
   id: string;
   kind: BusinessKind;
+  orderStatus: OrderStatus;
   name: string;
   client: string;
   eventDate: string;

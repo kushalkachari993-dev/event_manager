@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `order_status` text DEFAULT 'enquiry' NOT NULL;

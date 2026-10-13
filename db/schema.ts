@@ -4,6 +4,7 @@ export const events = sqliteTable("events", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
   kind: text("kind").notNull().default("event"),
+  orderStatus: text("order_status").notNull().default("enquiry"),
   name: text("name").notNull(),
   client: text("client").notNull().default(""),
   eventDate: text("event_date").notNull(),
