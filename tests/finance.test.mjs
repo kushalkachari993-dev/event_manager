@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { categoriesFor, categoryForecast, isCategoryFor, metrics } from "../lib/finance.ts";
+import { orderAttention } from "../lib/order-workflow.ts";
 
 function eventWith({ budget = 0, agreed = 0, vendorPayments = [], otherExpenses = [] } = {}) {
   return {
@@ -48,4 +49,15 @@ test("bakery orders use ingredient costs without event-only categories", () => {
   assert.equal(isCategoryFor("Ingredients", "event"), false);
   assert.equal(metrics(order).projectedCost, 122000);
   assert.equal(metrics(order).projectedProfit, 128000);
+});
+
+test("bakery delivery and payment attention follows the order stage", () => {
+  const order = { ...eventWith(), kind: "bakery", orderStatus: "confirmed", eventDate: "2026-10-15", quotePaise: 50000 };
+  assert.equal(orderAttention(order, "2026-10-13"), "due_soon");
+  assert.equal(orderAttention({ ...order, eventDate: "2026-10-13" }, "2026-10-13"), "due_today");
+  assert.equal(orderAttention({ ...order, eventDate: "2026-10-12" }, "2026-10-13"), "overdue");
+  assert.equal(orderAttention({ ...order, orderStatus: "delivered" }, "2026-10-13"), "payment_due");
+  assert.equal(orderAttention({ ...order, orderStatus: "delivered", payments: [{ amountPaise: 50000 }] }, "2026-10-13"), null);
+  assert.equal(orderAttention({ ...order, archivedAt: "2026-10-13" }, "2026-10-13"), null);
+  assert.equal(orderAttention({ ...order, kind: "event" }, "2026-10-13"), null);
 });

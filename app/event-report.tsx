@@ -1,4 +1,4 @@
-import { categoriesFor, categoryForecast, metrics, vendorPaidPaise, type EventRecord } from "../lib/finance";
+import { categoriesFor, categoryForecast, metrics, ORDER_STAGE_LABELS, vendorPaidPaise, type EventRecord } from "../lib/finance";
 
 const money = (paise: number) => new Intl.NumberFormat("en-IN", {
   style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2,
@@ -20,7 +20,7 @@ export default function EventReport({ event }: { event: EventRecord }) {
     <div className="report-intro">
       <p className="report-eyebrow">{isBakery ? "ORDER OVERVIEW" : "EVENT OVERVIEW"}</p>
       <h1>{event.name}</h1>
-      <p>{isBakery ? "Customer" : "Client"}: {event.client || "Not specified"}</p>
+      <p>{isBakery ? "Customer" : "Client"}: {event.client || "Not specified"}{isBakery ? ` · Stage: ${ORDER_STAGE_LABELS[event.orderStatus]}` : ""}</p>
     </div>
 
     <section className="report-summary" aria-label="Financial summary">

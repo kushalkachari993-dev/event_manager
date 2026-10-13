@@ -1,4 +1,4 @@
-import { categoriesFor, categoryForecast, metrics, vendorPaidPaise, type EventRecord } from "./finance";
+import { categoriesFor, categoryForecast, metrics, ORDER_STAGE_LABELS, vendorPaidPaise, type EventRecord } from "./finance";
 
 const amount = (paise: number) => paise / 100;
 
@@ -25,6 +25,7 @@ export function buildEventCsv(event: EventRecord): string {
     row(isBakery ? "Order" : "Event", event.name),
     row(isBakery ? "Customer" : "Client", event.client || "Not specified"),
     row(isBakery ? "Delivery date" : "Event date", event.eventDate),
+    ...(isBakery ? [row("Order stage", ORDER_STAGE_LABELS[event.orderStatus])] : []),
     row(isBakery ? "Order price (INR)" : "Client quote (INR)", amount(event.quotePaise)),
     row("Planned costs (INR)", amount(result.planned)),
     row("Actual costs (INR)", amount(result.spent)),
