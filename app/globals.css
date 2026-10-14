@@ -95,3 +95,10 @@
 .customer-business-contact span{overflow-wrap:anywhere}
 @media(max-width:750px){.heading-actions{justify-content:flex-start}}
 @media(max-width:450px){.heading-actions{margin-top:18px}.heading-actions .primary-button{margin-top:0}.quote-profile-prompt{margin-left:20px;margin-right:20px;align-items:flex-start;flex-direction:column}.customer-document-header{flex-direction:column}.customer-document-label{text-align:left}}
+
+.workspace-export-card{display:flex;align-items:center;justify-content:space-between;gap:22px;margin-top:24px;padding:24px;background:#fff;border:1px solid #e9edf1;border-radius:15px;box-shadow:0 3px 15px #28395305}
+.workspace-export-card h2{font-size:20px;letter-spacing:-.5px;margin:8px 0 5px}
+.workspace-export-card p{max-width:640px;margin:0;color:#8e9aaa;font-size:12px;line-height:1.6}
+.workspace-export-card .outline-button{flex:none;white-space:nowrap}
+@media(max-width:750px){.workspace-export-card{align-items:stretch;flex-direction:column}.workspace-export-card .outline-button{align-self:flex-start}}
+@media(max-width:450px){.workspace-export-card{padding:19px}.workspace-export-card .outline-button{width:100%;justify-content:center}}

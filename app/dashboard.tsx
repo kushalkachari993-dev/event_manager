@@ -33,6 +33,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   const [view, setView] = useState<View>("overview");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const [bakeryProfile, setBakeryProfile] = useState<BakeryProfile>(emptyBakeryProfile);
   const [profileError, setProfileError] = useState("");
@@ -127,6 +128,29 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }
 
+  async function downloadWorkspace() {
+    setExporting(true);
+    setError("");
+    try {
+      const response = await fetch("/api/workspace-export", { cache: "no-store" });
+      if (!response.ok) {
+        const data = await response.json() as { error?: string };
+        throw new Error(data.error || "Could not export your workspace.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `event-profit-watch-backup-${today()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not export your workspace.");
+    } finally { setExporting(false); }
+  }
+
   return <><div className="shell">
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark"><Layers3 size={20} strokeWidth={2.4}/></span><span>event<span className="brand-light">profit</span><b>.</b></span></div>
@@ -197,6 +221,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
             </section>}
           </>}
           {(view === "events" || view === "bakery") && archivedItems.length > 0 && <section className="archive-section"><div className="section-heading"><div><span className="section-kicker">PAST WORK</span><h2>{isBakery ? "Archived orders" : "Archived events"} <span className="count">{archivedItems.length}</span></h2></div></div><div className="archive-list">{archivedItems.map((item) => <div className="archive-row" key={item.id}><div><strong>{item.name}</strong><span>{prettyDate(item.eventDate)} · {currency(item.quotePaise)} {isBakery ? "price" : "quote"}</span></div><button type="button" className="outline-button" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(item.id)}`, { action: "restore" }, "PATCH")}><RotateCcw size={14}/> Restore</button></div>)}</div></section>}
+          {view === "overview" && <section className="workspace-export-card"><div><span className="section-kicker">YOUR DATA</span><h2>Keep a copy of your workspace</h2><p>Download a JSON file with all events and bakery orders, including archived work, budgets, supplier commitments, expenses, payments, and your bakery profile. Importing a backup into the app is not available yet.</p></div><button type="button" className="outline-button" disabled={exporting} onClick={() => void downloadWorkspace()}><Download size={16}/> {exporting ? "Preparing backup…" : "Download full backup"}</button></section>}
         </>}
       </div>
     </main>

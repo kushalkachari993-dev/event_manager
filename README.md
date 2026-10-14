@@ -18,6 +18,7 @@ A small profit tracker for independent event decorators, with a custom-order bak
 - Move bakery orders through Enquiry, Quoted, Confirmed, In production, Ready, and Delivered stages. See upcoming or overdue deliveries and delivered orders with balances still due. Stage and balance appear on the order report.
 - Capture customer-facing order details, quantity, pickup or delivery time, and a deposit to confirm. Preview and print a customer quote/confirmation or copy a message for manual sharing; internal costs, suppliers, and profit stay out of both. Set a private minimum margin target and see a warning while pricing.
 - Save a private bakery business profile with name, contact details, and an optional logo. Customer quotes, confirmations, and copied messages use that branding.
+- Download a full JSON workspace export from Overview. It includes active and archived event and bakery records, budgets, commitments, expenses, payments, and the bakery profile. The app does not yet import backups.
 
 This is an MVP for testing the workflow with decorators and custom-order bakeries. Bakery costs are entered per order; recipe-level ingredient costing and inventory are not yet included. The app also does not include receipts, payment collection, invoicing, or billing.
 

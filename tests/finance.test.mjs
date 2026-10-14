@@ -4,6 +4,7 @@ import { belowMarginTarget, categoriesFor, categoryForecast, isCategoryFor, metr
 import { orderAttention } from "../lib/order-workflow.ts";
 import { buildCustomerMessage, customerAmounts, customerDocumentTitle } from "../lib/customer-quote.ts";
 import { parseBakeryProfile } from "../lib/business-profile.ts";
+import { buildWorkspaceExport } from "../lib/workspace-export.ts";
 
 function eventWith({ budget = 0, agreed = 0, vendorPayments = [], otherExpenses = [] } = {}) {
   return {
@@ -92,4 +93,26 @@ test("bakery profile is validated and brands the customer message", () => {
   const message = buildCustomerMessage({ ...eventWith(), kind: "bakery", orderStatus: "quoted", orderDescription: "Chocolate cake", quantity: 1, fulfillment: "pickup", fulfillmentTime: "", depositRequiredPaise: 0 }, profile);
   assert.match(message, /^Asha's Bakes\n\+91 98765 43210\nhello@example.com\nInstagram: @ashasbakes/);
   assert.doesNotMatch(message, /profit|supplier|cost|margin|budget/i);
+});
+
+test("full workspace export keeps archived records and nested transactions without owner IDs", () => {
+  const record = { ...eventWith(), ownerId: "account-one", archivedAt: "2026-10-20T10:00:00.000Z" };
+  const backup = buildWorkspaceExport({
+    events: [record],
+    budgets: [{ id: "budget-1", eventId: record.id, category: "Flowers", plannedPaise: 12000 }],
+    commitments: [{ id: "vendor-1", eventId: record.id, vendor: "Florist", category: "Flowers", agreedPaise: 9000, dueOn: "2026-10-18", createdAt: "2026-10-12" }],
+    expenses: [{ id: "cost-1", eventId: record.id, commitmentId: "vendor-1", category: "Flowers", description: "Deposit", amountPaise: 2000, spentOn: "2026-10-13", createdAt: "2026-10-13" }, { id: "foreign", eventId: "another-owner", amountPaise: 5000 }],
+    payments: [{ id: "payment-1", eventId: record.id, amountPaise: 10000, receivedOn: "2026-10-14", note: "Client deposit", createdAt: "2026-10-14" }],
+    bakeryProfile: { ownerId: "account-one", businessName: "Test Bakery", phone: "", email: "", instagram: "", logoDataUrl: "data:image/webp;base64,AA==", updatedAt: "2026-10-14" },
+  }, "2026-10-14T12:00:00.000Z");
+  assert.equal(backup.format, "event-profit-watch-workspace");
+  assert.equal(backup.version, 1);
+  assert.equal(backup.records[0].archivedAt, "2026-10-20T10:00:00.000Z");
+  assert.equal(backup.records[0].budgets[0].plannedPaise, 12000);
+  assert.equal(backup.records[0].commitments[0].agreedPaise, 9000);
+  assert.equal(backup.records[0].expenses[0].commitmentId, "vendor-1");
+  assert.equal(backup.records[0].payments[0].amountPaise, 10000);
+  assert.equal(backup.bakeryProfile?.businessName, "Test Bakery");
+  assert.equal(JSON.stringify(backup).includes("account-one"), false);
+  assert.equal(JSON.stringify(backup).includes("another-owner"), false);
 });
