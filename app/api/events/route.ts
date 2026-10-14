@@ -3,6 +3,7 @@ import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
 import { budgets, commitments, events, expenses, payments } from "../../../db/schema";
 import { categoriesFor, toPaise } from "../../../lib/finance";
+import { parseOrderDetails } from "../../../lib/order-details";
 
 export async function GET() {
   const user = await getChatGPTUser();
@@ -43,13 +44,15 @@ export async function POST(request: Request) {
     const quotePaise = toPaise(data.quote);
     const inputBudgets = data.budgets && typeof data.budgets === "object" ? data.budgets as Record<string, unknown> : {};
     const plans = categoriesFor(kind).map((category) => ({ category, plannedPaise: toPaise(inputBudgets[category]) }));
+    const orderDetails = kind === "bakery" && quotePaise !== null ? parseOrderDetails(data, quotePaise) : null;
     if (!name || name.length > 100 || client.length > 100 || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate) || quotePaise === null || quotePaise === 0 || plans.some((row) => row.plannedPaise === null)) {
       return Response.json({ error: kind === "bakery" ? "Enter an order name, delivery date, price, and valid cost estimates." : "Enter an event name, date, quote, and valid category budgets." }, { status: 400 });
     }
+    if (kind === "bakery" && !orderDetails) return Response.json({ error: "Check the order details, quantity, deposit, and margin target." }, { status: 400 });
     const id = crypto.randomUUID();
     const db = getDb();
     await db.batch([
-      db.insert(events).values({ id, ownerId: user.userId, kind, name, client, eventDate, quotePaise, createdAt: new Date().toISOString() }),
+      db.insert(events).values({ id, ownerId: user.userId, kind, name, client, eventDate, quotePaise, ...(orderDetails ?? {}), createdAt: new Date().toISOString() }),
       db.insert(budgets).values(plans.map((row) => ({ id: crypto.randomUUID(), eventId: id, category: row.category, plannedPaise: row.plannedPaise! }))),
     ]);
     return Response.json({ id }, { status: 201 });

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { categoriesFor, categoryForecast, isCategoryFor, metrics } from "../lib/finance.ts";
+import { belowMarginTarget, categoriesFor, categoryForecast, isCategoryFor, metrics } from "../lib/finance.ts";
 import { orderAttention } from "../lib/order-workflow.ts";
+import { buildCustomerMessage, customerAmounts, customerDocumentTitle } from "../lib/customer-quote.ts";
 
 function eventWith({ budget = 0, agreed = 0, vendorPayments = [], otherExpenses = [] } = {}) {
   return {
@@ -60,4 +61,24 @@ test("bakery delivery and payment attention follows the order stage", () => {
   assert.equal(orderAttention({ ...order, orderStatus: "delivered", payments: [{ amountPaise: 50000 }] }, "2026-10-13"), null);
   assert.equal(orderAttention({ ...order, archivedAt: "2026-10-13" }, "2026-10-13"), null);
   assert.equal(orderAttention({ ...order, kind: "event" }, "2026-10-13"), null);
+});
+
+test("customer quote includes order and payment details without internal finances", () => {
+  const order = {
+    ...eventWith({ budget: 60000, agreed: 70000 }), kind: "bakery", orderStatus: "quoted",
+    name: "Birthday cake", client: "Asha", orderDescription: "Chocolate, 1 kg", quantity: 1,
+    fulfillment: "pickup", fulfillmentTime: "16:30", quotePaise: 100000,
+    depositRequiredPaise: 30000, targetMarginPct: 30,
+    payments: [{ amountPaise: 10000 }],
+  };
+  const message = buildCustomerMessage(order);
+  assert.equal(customerDocumentTitle(order), "Custom order quote");
+  assert.deepEqual(customerAmounts(order), { received: 10000, balanceDue: 90000, depositDue: 20000 });
+  assert.match(message, /Chocolate, 1 kg/);
+  assert.match(message, /Pickup on/);
+  assert.match(message, /Deposit still due/);
+  assert.doesNotMatch(message, /profit|supplier|cost|margin|budget/i);
+  assert.equal(customerDocumentTitle({ ...order, orderStatus: "confirmed" }), "Order confirmation");
+  assert.equal(belowMarginTarget(100000, 75000, 30), true);
+  assert.equal(belowMarginTarget(100000, 65000, 30), false);
 });
