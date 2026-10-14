@@ -2,6 +2,7 @@ export const CATEGORIES = ["Flowers", "Materials", "Labour", "Rentals", "Transpo
 export const BAKERY_CATEGORIES = ["Ingredients", "Labour", "Packaging", "Delivery", "Overheads", "Other"] as const;
 const ALL_CATEGORIES: readonly string[] = [...CATEGORIES, ...BAKERY_CATEGORIES];
 export type BusinessKind = "event" | "bakery";
+export type Fulfillment = "pickup" | "delivery";
 export const ORDER_STAGES = ["enquiry", "quoted", "confirmed", "in_production", "ready", "delivered"] as const;
 export type OrderStatus = (typeof ORDER_STAGES)[number];
 export const ORDER_STAGE_LABELS: Record<OrderStatus, string> = {
@@ -42,6 +43,12 @@ export type EventRecord = {
   id: string;
   kind: BusinessKind;
   orderStatus: OrderStatus;
+  orderDescription: string;
+  quantity: number;
+  fulfillment: Fulfillment;
+  fulfillmentTime: string;
+  depositRequiredPaise: number;
+  targetMarginPct: number;
   name: string;
   client: string;
   eventDate: string;
@@ -77,4 +84,8 @@ export function metrics(event: EventRecord) {
   const projectedProfit = event.quotePaise - projectedCost;
   const received = event.payments.reduce((sum, payment) => sum + payment.amountPaise, 0);
   return { planned, spent, unpaidCommitments, projectedCost, projectedProfit, received, balance: event.quotePaise - received, margin: event.quotePaise ? Math.round((projectedProfit / event.quotePaise) * 100) : 0 };
+}
+
+export function belowMarginTarget(quotePaise: number, costPaise: number, targetMarginPct: number): boolean {
+  return quotePaise > 0 && (quotePaise - costPaise) * 100 < quotePaise * targetMarginPct;
 }

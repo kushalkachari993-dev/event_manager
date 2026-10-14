@@ -3,6 +3,7 @@ import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
 import { budgets, events } from "../../../../db/schema";
 import { categoriesFor, isOrderStatus, toPaise } from "../../../../lib/finance";
+import { parseOrderDetails } from "../../../../lib/order-details";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -39,13 +40,15 @@ export async function PATCH(request: Request, { params }: Context) {
       ? data.budgets as Record<string, unknown> : {};
     const kind = owned.kind === "bakery" ? "bakery" : "event";
     const plans = categoriesFor(kind).map((category) => ({ category, plannedPaise: toPaise(inputBudgets[category]) }));
+    const orderDetails = kind === "bakery" && quotePaise !== null ? parseOrderDetails(data, quotePaise) : null;
     if (!name || name.length > 100 || client.length > 100 || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)
       || Number.isNaN(Date.parse(`${eventDate}T12:00:00Z`)) || quotePaise === null || quotePaise === 0
       || plans.some((row) => row.plannedPaise === null)) {
       return Response.json({ error: kind === "bakery" ? "Enter an order name, delivery date, price, and valid cost estimates." : "Enter an event name, date, quote, and valid category budgets." }, { status: 400 });
     }
+    if (kind === "bakery" && !orderDetails) return Response.json({ error: "Check the order details, quantity, deposit, and margin target." }, { status: 400 });
     await db.batch([
-      db.update(events).set({ name, client, eventDate, quotePaise }).where(and(eq(events.id, id), eq(events.ownerId, user.userId))),
+      db.update(events).set({ name, client, eventDate, quotePaise, ...(orderDetails ?? {}) }).where(and(eq(events.id, id), eq(events.ownerId, user.userId))),
       ...plans.map((row) => db.update(budgets).set({ plannedPaise: row.plannedPaise! })
         .where(and(eq(budgets.eventId, id), eq(budgets.category, row.category)))),
     ]);

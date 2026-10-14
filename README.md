@@ -16,6 +16,7 @@ A small profit tracker for independent event decorators, with a custom-order bak
 - Print or save an event financial report as PDF, or download the same figures and transaction lists as CSV.
 - Switch to Bakery orders to price custom orders with Ingredients, Labour, Packaging, Delivery, Overheads, and Other cost estimates. Track supplier commitments, actual expenses, customer deposits and balances, and export an order report. Event and bakery records remain separate.
 - Move bakery orders through Enquiry, Quoted, Confirmed, In production, Ready, and Delivered stages. See upcoming or overdue deliveries and delivered orders with balances still due. Stage and balance appear on the order report.
+- Capture customer-facing order details, quantity, pickup or delivery time, and a deposit to confirm. Preview and print a customer quote/confirmation or copy a message for manual sharing; internal costs, suppliers, and profit stay out of both. Set a private minimum margin target and see a warning while pricing.
 
 This is an MVP for testing the workflow with decorators and custom-order bakeries. Bakery costs are entered per order; recipe-level ingredient costing and inventory are not yet included. The app also does not include receipts, payment collection, invoicing, or billing.
 
@@ -36,6 +37,7 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0003_purple_corsair.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0004_broad_wonder_man.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0005_cultured_gunslinger.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0006_nostalgic_forge.sql
 npm run dev
 ```
 
