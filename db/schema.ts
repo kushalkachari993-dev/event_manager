@@ -1,5 +1,15 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+export const bakeryProfiles = sqliteTable("bakery_profiles", {
+  ownerId: text("owner_id").primaryKey(),
+  businessName: text("business_name").notNull(),
+  phone: text("phone").notNull().default(""),
+  email: text("email").notNull().default(""),
+  instagram: text("instagram").notNull().default(""),
+  logoDataUrl: text("logo_data_url").notNull().default(""),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const events = sqliteTable("events", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),

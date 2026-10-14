@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Archive, ArrowDownRight, ArrowRight, CakeSlice, CalendarDays, Check, ChevronDown, CircleHelp, Download, IndianRupee, Layers3, Pencil, Plus, Printer, RotateCcw, Sparkles, Trash2, TrendingUp, Wallet, X } from "lucide-react";
+import { Archive, ArrowDownRight, ArrowRight, CakeSlice, CalendarDays, Check, ChevronDown, CircleHelp, Download, IndianRupee, Layers3, Pencil, Plus, Printer, RotateCcw, Settings2, Sparkles, Trash2, TrendingUp, Wallet, X } from "lucide-react";
 import { belowMarginTarget, categoriesFor, categoryForecast, formatCurrency as currency, metrics, ORDER_STAGES, ORDER_STAGE_LABELS, type BusinessKind, type Category, type EventRecord, type Fulfillment, type OrderStatus } from "../lib/finance";
 import { ATTENTION_LABELS, orderAttention } from "../lib/order-workflow";
 import { buildEventCsv, eventReportFilename } from "../lib/report";
 import EventReport from "./event-report";
 import VendorCommitments from "./vendor-commitments";
 import CustomerQuoteModal from "./customer-quote";
+import BakeryProfileModal from "./bakery-profile";
+import { emptyBakeryProfile, type BakeryProfile } from "../lib/business-profile";
 
 const today = () => {
   const now = new Date();
@@ -18,7 +20,7 @@ const today = () => {
 };
 const prettyDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-type Mode = "event" | "expense" | "edit-event" | "edit-expense" | "payment" | "edit-payment" | "customer-quote" | null;
+type Mode = "event" | "expense" | "edit-event" | "edit-expense" | "payment" | "edit-payment" | "customer-quote" | "bakery-profile" | null;
 type View = "overview" | "events" | "bakery";
 
 export default function Dashboard({ displayName }: { displayName: string }) {
@@ -32,6 +34,18 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [bakeryProfile, setBakeryProfile] = useState<BakeryProfile>(emptyBakeryProfile);
+  const [profileError, setProfileError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/bakery-profile", { cache: "no-store" }).then(async (response) => {
+      const data = await response.json() as { profile?: BakeryProfile; error?: string };
+      if (!response.ok || !data.profile) throw new Error(data.error || "Could not load bakery profile");
+      if (active) setBakeryProfile(data.profile);
+    }).catch(() => { if (active) setProfileError("Could not load your bakery profile. Please refresh before sharing a quote."); });
+    return () => { active = false; };
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -131,7 +145,8 @@ export default function Dashboard({ displayName }: { displayName: string }) {
       <header className="topbar"><div className="crumb">Workspace <span>/</span> <strong>{view === "overview" ? "Overview" : isBakery ? "Bakery orders" : "Events"}</strong></div><div className="topbar-right"><span className="secure-pill"><span/> Private dashboard</span><div className="small-avatar">{firstName.slice(0, 1).toUpperCase()}</div></div></header>
       <nav className="mobile-nav" aria-label="Workspace"><button type="button" className={view === "overview" ? "active" : ""} onClick={() => switchView("overview")}>Overview</button><button type="button" className={view === "events" ? "active" : ""} onClick={() => switchView("events")}>Events</button><button type="button" className={view === "bakery" ? "active" : ""} onClick={() => switchView("bakery")}>Bakery</button></nav>
       <div className={`content ${view !== "overview" ? "events-view" : ""}`}>
-        <section className="heading"><div><div className="eyebrow">{isBakery ? "YOUR CUSTOM-ORDER WORKSPACE" : view === "overview" ? "YOUR FINANCIAL CONTROL ROOM" : "YOUR EVENT WORKSPACE"}</div><h1>{isBakery ? "Your bakery orders" : view === "overview" ? <>Good morning, {firstName} <span className="wave">✳</span></> : "Your events"}</h1><p>{isBakery ? "Price each order, track ingredient costs, and protect your margin." : view === "overview" ? "Keep your event costs in view and your margins on track." : "Review budgets, expenses, and projected profit for every event."}</p></div><button className="primary-button" onClick={() => { setError(""); setMode("event"); }}><Plus size={18}/> {isBakery ? "New order" : "New event"}</button></section>
+        <section className="heading"><div><div className="eyebrow">{isBakery ? "YOUR CUSTOM-ORDER WORKSPACE" : view === "overview" ? "YOUR FINANCIAL CONTROL ROOM" : "YOUR EVENT WORKSPACE"}</div><h1>{isBakery ? "Your bakery orders" : view === "overview" ? <>Good morning, {firstName} <span className="wave">✳</span></> : "Your events"}</h1><p>{isBakery ? "Price each order, track ingredient costs, and protect your margin." : view === "overview" ? "Keep your event costs in view and your margins on track." : "Review budgets, expenses, and projected profit for every event."}</p></div><div className="heading-actions">{isBakery && <button type="button" className="outline-button" onClick={() => setMode("bakery-profile")}><Settings2 size={16}/> Business profile</button>}<button className="primary-button" onClick={() => { setError(""); setMode("event"); }}><Plus size={18}/> {isBakery ? "New order" : "New event"}</button></div></section>
+        {isBakery && profileError && <div role="alert" className="error-banner">{profileError}<button onClick={() => setProfileError("")} aria-label="Dismiss error"><X size={16}/></button></div>}
         {error && <div role="alert" className="error-banner">{error}<button onClick={() => setError("")} aria-label="Dismiss error"><X size={16}/></button></div>}
         {loading ? <div className="loading">Loading your workspace…</div> : <>
           {view !== "events" && <section className="metric-grid">
@@ -172,7 +187,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                 </div>
               </div>)}</div> : <div className="no-expenses">{isBakery ? "No payments recorded yet. Add a deposit when your customer pays you." : "No payments recorded yet. Add a deposit when your client pays you."}</div>}
             </section>}
-            {isBakery && selected && <section className="customer-share-card"><div><span className="section-kicker">READY TO SHARE</span><h2>Customer quote & confirmation</h2><p>Preview a customer-safe document with the order details, price, deposit, and balance. Your costs and profit stay private.</p></div><button type="button" className="primary-button" onClick={() => setMode("customer-quote")}>Preview customer quote <ArrowRight size={16}/></button></section>}
+            {isBakery && selected && <section className="customer-share-card"><div><span className="section-kicker">READY TO SHARE</span><h2>Customer quote & confirmation</h2><p>Preview a customer-safe document with your bakery branding, order details, price, deposit, and balance. Your costs and profit stay private.</p></div><button type="button" className="primary-button" onClick={() => setMode("customer-quote")}>Preview customer quote <ArrowRight size={16}/></button></section>}
             {selected && <section className="report-card">
               <div><span className="section-kicker">{isBakery ? "ORDER REPORT" : "EVENT REPORT"}</span><h2>{isBakery ? "Share your order numbers" : "Share your event numbers"}</h2><p>Get a printable summary or download the underlying figures as a spreadsheet file.</p></div>
               <div className="report-actions">
@@ -188,7 +203,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     {(mode === "event" || mode === "edit-event") && <EventModal kind={workspaceKind} eventRecord={mode === "edit-event" ? selected : null} error={error} close={() => setMode(null)} saving={saving} submit={(data) => submit(mode === "edit-event" && selected ? `/api/events/${encodeURIComponent(selected.id)}` : "/api/events", data, mode === "edit-event" ? "PATCH" : "POST")} />}
     {(mode === "expense" || mode === "edit-expense") && selected && <ExpenseModal kind={selected.kind} eventName={selected.name} eventId={selected.id} expense={mode === "edit-expense" ? editingExpense : undefined} commitment={selected.commitments.find((item) => item.id === (mode === "edit-expense" ? editingExpense?.commitmentId : recordingCommitmentId))} error={error} close={() => { setMode(null); setEditingExpenseId(null); setRecordingCommitmentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-expense" && editingExpense ? `/api/expenses/${encodeURIComponent(editingExpense.id)}` : "/api/expenses", data, mode === "edit-expense" ? "PATCH" : "POST")} />}
     {(mode === "payment" || mode === "edit-payment") && selected && <PaymentModal kind={selected.kind} eventName={selected.name} eventId={selected.id} payment={mode === "edit-payment" ? editingPayment : undefined} error={error} close={() => { setMode(null); setEditingPaymentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-payment" && editingPayment ? `/api/payments/${encodeURIComponent(editingPayment.id)}` : "/api/payments", data, mode === "edit-payment" ? "PATCH" : "POST")} />}
-  </div>{mode === "customer-quote" && selected?.kind === "bakery" && <CustomerQuoteModal order={selected} close={() => setMode(null)}/>}{selected && mode !== "customer-quote" && <EventReport event={selected} />}</>;
+  </div>{mode === "customer-quote" && selected?.kind === "bakery" && <CustomerQuoteModal order={selected} profile={bakeryProfile} editProfile={() => setMode("bakery-profile")} close={() => setMode(null)}/>}{mode === "bakery-profile" && <BakeryProfileModal profile={bakeryProfile} close={() => setMode(null)} saved={(profile) => { setBakeryProfile(profile); setProfileError(""); setMode(null); }}/>}{selected && mode !== "customer-quote" && <EventReport event={selected} />}</>;
 }
 
 function Metric({ icon, label, value, note, tone }: { icon: React.ReactNode; label: string; value: string; note: string; tone: string }) {

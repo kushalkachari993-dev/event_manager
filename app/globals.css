@@ -75,3 +75,23 @@
   .report-footer{border-top:1px solid #e1e5ed;margin-top:5mm;padding-top:3mm;color:#6f7c8b;font-size:8pt}.report-footer p{margin:0 0 2mm}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+.heading-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.heading-actions .outline-button{white-space:nowrap}
+.bakery-profile-modal{width:min(610px,100%)}
+.bakery-profile-modal .two-fields{margin-bottom:17px}
+.logo-picker{display:flex;align-items:center;gap:13px;border:1px solid #e6e9ef;border-radius:11px;padding:12px;min-width:0}
+.logo-picker img,.logo-placeholder{width:58px;height:58px;border-radius:10px;object-fit:contain;background:#f3f3fb;flex:none}
+.logo-placeholder{display:grid;place-items:center;color:#7779df}
+.logo-picker>div{min-width:0;flex:1}
+.logo-picker input{border:0;padding:8px 0;height:auto;max-width:100%;font-size:11px}
+.logo-picker small{display:block;color:#9aa5b2;font-size:11px;line-height:1.4}
+.quote-profile-prompt{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 29px 0;padding:11px 13px;border-radius:9px;background:#fff7e9;color:#966735;font-size:12px}
+.quote-profile-prompt button{white-space:nowrap}
+.customer-business{min-width:0;overflow-wrap:anywhere}
+.customer-business-heading{display:flex;align-items:center;gap:11px}
+.customer-business-logo{width:54px;height:54px;object-fit:contain;flex:none}
+.customer-business-contact{display:flex;flex-wrap:wrap;gap:3px 12px;line-height:1.5}
+.customer-business-contact span{overflow-wrap:anywhere}
+@media(max-width:750px){.heading-actions{justify-content:flex-start}}
+@media(max-width:450px){.heading-actions{margin-top:18px}.heading-actions .primary-button{margin-top:0}.quote-profile-prompt{margin-left:20px;margin-right:20px;align-items:flex-start;flex-direction:column}.customer-document-header{flex-direction:column}.customer-document-label{text-align:left}}

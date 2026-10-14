@@ -3,6 +3,7 @@ import test from "node:test";
 import { belowMarginTarget, categoriesFor, categoryForecast, isCategoryFor, metrics } from "../lib/finance.ts";
 import { orderAttention } from "../lib/order-workflow.ts";
 import { buildCustomerMessage, customerAmounts, customerDocumentTitle } from "../lib/customer-quote.ts";
+import { parseBakeryProfile } from "../lib/business-profile.ts";
 
 function eventWith({ budget = 0, agreed = 0, vendorPayments = [], otherExpenses = [] } = {}) {
   return {
@@ -81,4 +82,14 @@ test("customer quote includes order and payment details without internal finance
   assert.equal(customerDocumentTitle({ ...order, orderStatus: "confirmed" }), "Order confirmation");
   assert.equal(belowMarginTarget(100000, 75000, 30), true);
   assert.equal(belowMarginTarget(100000, 65000, 30), false);
+});
+
+test("bakery profile is validated and brands the customer message", () => {
+  const profile = parseBakeryProfile({ businessName: "  Asha's Bakes  ", phone: "+91 98765 43210", email: "hello@example.com", instagram: "@ashasbakes", logoDataUrl: "" });
+  assert.equal(profile?.businessName, "Asha's Bakes");
+  assert.equal(parseBakeryProfile({ ...profile, businessName: "" }), null);
+  assert.equal(parseBakeryProfile({ ...profile, logoDataUrl: "data:image/svg+xml;base64,PHN2Zz4=" }), null);
+  const message = buildCustomerMessage({ ...eventWith(), kind: "bakery", orderStatus: "quoted", orderDescription: "Chocolate cake", quantity: 1, fulfillment: "pickup", fulfillmentTime: "", depositRequiredPaise: 0 }, profile);
+  assert.match(message, /^Asha's Bakes\n\+91 98765 43210\nhello@example.com\nInstagram: @ashasbakes/);
+  assert.doesNotMatch(message, /profit|supplier|cost|margin|budget/i);
 });

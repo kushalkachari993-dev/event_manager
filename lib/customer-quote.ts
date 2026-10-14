@@ -1,9 +1,14 @@
 import type { EventRecord } from "./finance";
+import type { BakeryProfile } from "./business-profile";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function customerMoney(paise: number): string {
   return money.format(paise / 100);
+}
+
+export function profileContactLines(profile: BakeryProfile): string[] {
+  return [profile.phone, profile.email, profile.instagram && `Instagram: ${profile.instagram}`].filter(Boolean);
 }
 
 export function customerDocumentTitle(order: EventRecord): string {
@@ -25,9 +30,10 @@ export function customerAmounts(order: EventRecord) {
   };
 }
 
-export function buildCustomerMessage(order: EventRecord): string {
+export function buildCustomerMessage(order: EventRecord, profile?: BakeryProfile): string {
   const amounts = customerAmounts(order);
   const lines = [
+    ...(profile?.businessName ? [profile.businessName, ...profileContactLines(profile), ""] : []),
     `${customerDocumentTitle(order)}${order.client ? ` for ${order.client}` : ""}`,
     "",
     `Order: ${order.name}`,
