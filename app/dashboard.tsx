@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Archive, ArrowDownRight, ArrowRight, CakeSlice, CalendarDays, Check, ChevronDown, CircleHelp, Download, IndianRupee, Layers3, Pencil, Plus, Printer, RotateCcw, Settings2, Sparkles, Trash2, TrendingUp, Wallet, X } from "lucide-react";
+import { Archive, ArrowDownRight, ArrowRight, CakeSlice, CalendarDays, Check, ChevronDown, CircleHelp, Download, IndianRupee, Layers3, MessageSquare, Pencil, Plus, Printer, RotateCcw, Settings2, Sparkles, Trash2, TrendingUp, Wallet, X } from "lucide-react";
 import { belowMarginTarget, categoriesFor, categoryForecast, formatCurrency as currency, metrics, ORDER_STAGES, ORDER_STAGE_LABELS, type BusinessKind, type Category, type EventRecord, type Fulfillment, type OrderStatus } from "../lib/finance";
 import { ATTENTION_LABELS, orderAttention } from "../lib/order-workflow";
 import { buildEventCsv, eventReportFilename } from "../lib/report";
@@ -9,6 +9,7 @@ import EventReport from "./event-report";
 import VendorCommitments from "./vendor-commitments";
 import CustomerQuoteModal from "./customer-quote";
 import BakeryProfileModal from "./bakery-profile";
+import PilotGuide from "./pilot-guide";
 import { emptyBakeryProfile, type BakeryProfile } from "../lib/business-profile";
 
 const today = () => {
@@ -23,7 +24,7 @@ const prettyDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateSt
 type Mode = "event" | "expense" | "edit-event" | "edit-expense" | "payment" | "edit-payment" | "customer-quote" | "bakery-profile" | null;
 type View = "overview" | "events" | "bakery";
 
-export default function Dashboard({ displayName }: { displayName: string }) {
+export default function Dashboard({ displayName, canReviewPilot = false }: { displayName: string; canReviewPilot?: boolean }) {
   const [items, setItems] = useState<EventRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>(null);
@@ -159,6 +160,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
         <button type="button" className={`nav-item ${view === "overview" ? "active" : ""}`} aria-current={view === "overview" ? "page" : undefined} onClick={() => switchView("overview")}><span className="nav-dot"/> Overview</button>
         <button type="button" className={`nav-item ${view === "events" ? "active" : ""}`} aria-current={view === "events" ? "page" : undefined} onClick={() => switchView("events")}><CalendarDays size={18}/> Events</button>
         <button type="button" className={`nav-item ${view === "bakery" ? "active" : ""}`} aria-current={view === "bakery" ? "page" : undefined} onClick={() => switchView("bakery")}><CakeSlice size={18}/> Bakery orders</button>
+        {canReviewPilot && <a className="nav-item" href="/pilot-feedback"><MessageSquare size={18}/> Pilot feedback</a>}
       </nav>
       <div className="side-spacer"/>
       <div className="side-note"><div className="side-note-icon"><Sparkles size={17}/></div><strong>Know your number</strong><p>Track every cost while there is still time to protect your profit.</p></div>
@@ -173,6 +175,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
         {isBakery && profileError && <div role="alert" className="error-banner">{profileError}<button onClick={() => setProfileError("")} aria-label="Dismiss error"><X size={16}/></button></div>}
         {error && <div role="alert" className="error-banner">{error}<button onClick={() => setError("")} aria-label="Dismiss error"><X size={16}/></button></div>}
         {loading ? <div className="loading">Loading your workspace…</div> : <>
+          {isBakery && <PilotGuide orders={items.filter((item) => item.kind === "bakery")} createOrder={() => { setError(""); setMode("event"); }} />}
           {view !== "events" && <section className="metric-grid">
             <Metric icon={isBakery ? <CakeSlice size={20}/> : <CalendarDays size={20}/>} label={isBakery ? "Active orders" : "Active events"} value={String(activeItems.length)} note={isBakery ? "Orders in your workspace" : "Events in your workspace"} tone="purple" />
             <Metric icon={<TrendingUp size={20}/>} label="Projected profit" value={currency(totals.forecast)} note={isBakery ? "Includes supplier commitments" : "Includes vendor commitments"} tone="green" />

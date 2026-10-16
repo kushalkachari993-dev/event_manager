@@ -19,6 +19,7 @@ A small profit tracker for independent event decorators, with a custom-order bak
 - Capture customer-facing order details, quantity, pickup or delivery time, and a deposit to confirm. Preview and print a customer quote/confirmation or copy a message for manual sharing; internal costs, suppliers, and profit stay out of both. Set a private minimum margin target and see a warning while pricing.
 - Save a private bakery business profile with name, contact details, and an optional logo. Customer quotes, confirmations, and copied messages use that branding.
 - Download a full JSON workspace export from Overview. It includes active and archived event and bakery records, budgets, commitments, expenses, payments, and the bakery profile. The app does not yet import backups.
+- Run a two-order bakery pilot with an in-app guide, progress count based on delivered orders, and feedback form. The owner-only `/pilot-feedback` page shows submitted notes; it requires `PILOT_ADMIN_USER_ID` in the Site runtime environment. See [the pilot guide](docs/bakery-pilot.md).
 
 This is an MVP for testing the workflow with decorators and custom-order bakeries. Bakery costs are entered per order; recipe-level ingredient costing and inventory are not yet included. The app also does not include receipts, payment collection, invoicing, or billing.
 
@@ -41,6 +42,7 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0005_cultured_gunslinger.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0006_nostalgic_forge.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0007_early_vanisher.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0008_magical_baron_zemo.sql
 npm run dev
 ```
 

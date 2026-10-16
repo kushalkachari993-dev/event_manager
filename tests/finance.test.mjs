@@ -5,6 +5,17 @@ import { orderAttention } from "../lib/order-workflow.ts";
 import { buildCustomerMessage, customerAmounts, customerDocumentTitle } from "../lib/customer-quote.ts";
 import { parseBakeryProfile } from "../lib/business-profile.ts";
 import { buildWorkspaceExport } from "../lib/workspace-export.ts";
+import { parsePilotFeedback } from "../lib/pilot-feedback.ts";
+
+test("pilot feedback accepts useful notes and rejects invalid scores or oversized text", () => {
+  assert.deepEqual(parsePilotFeedback({ stage: "quote", easeScore: 2, blocker: "  I could not find the share button.  ", workedWell: "  Pricing was quick.  " }), {
+    stage: "quote", easeScore: 2, blocker: "I could not find the share button.", workedWell: "Pricing was quick.",
+  });
+  assert.equal(parsePilotFeedback({ stage: "quote", easeScore: 0, blocker: "I could not find the share button.", workedWell: "" }), null);
+  assert.equal(parsePilotFeedback({ stage: "unknown", easeScore: 2, blocker: "I could not find the share button.", workedWell: "" }), null);
+  assert.equal(parsePilotFeedback({ stage: "quote", easeScore: 2, blocker: "too short", workedWell: "" }), null);
+  assert.equal(parsePilotFeedback({ stage: "quote", easeScore: 2, blocker: "x".repeat(1201), workedWell: "" }), null);
+});
 
 function eventWith({ budget = 0, agreed = 0, vendorPayments = [], otherExpenses = [] } = {}) {
   return {

@@ -57,6 +57,13 @@
       "when": 1791953510678,
       "tag": "0007_early_vanisher",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791958889172,
+      "tag": "0008_magical_baron_zemo",
+      "breakpoints": true
     }
   ]
 }

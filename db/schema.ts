@@ -10,6 +10,18 @@ export const bakeryProfiles = sqliteTable("bakery_profiles", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const pilotFeedback = sqliteTable("pilot_feedback", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  email: text("email").notNull(),
+  stage: text("stage").notNull(),
+  easeScore: integer("ease_score").notNull(),
+  blocker: text("blocker").notNull(),
+  workedWell: text("worked_well").notNull().default(""),
+  deliveredOrders: integer("delivered_orders").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+});
+
 export const events = sqliteTable("events", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
