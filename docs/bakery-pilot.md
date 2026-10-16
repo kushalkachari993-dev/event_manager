@@ -4,11 +4,25 @@ Run a two-week pilot with 3–5 independent bakery owners. Each participant uses
 
 ## Invite and set up
 
-Send this individually to owners you already know. Do not create test orders in their accounts or collect customer details in a separate spreadsheet.
+Send this individually to 3–5 owners you already know, replacing `[Name]`. Do not create test orders in their accounts or collect customer details in a separate spreadsheet.
 
-> I'm testing a small web app that helps custom bakeries price orders, track actual costs and customer payments, and see profit before delivery. Would you be willing to use it for two real orders over the next two weeks? It is free during this pilot. You can stop anytime. Feedback you send in the app is visible to me with your sign-in email and the number of orders you marked delivered; I cannot view your order details or finances. I would value 15 minutes of honest feedback at the end.
+> Hi [Name], I’m testing a free web app for custom-order bakeries. It helps price an order, track costs and customer payments, and see the expected profit. Would you try it with two real orders over the next two weeks?
+>
+> Here’s the link: [Event Profit Watch](https://event-profit-watch.kushalkachari993.chatgpt.site/)
+>
+> Sign in, open **Bakery orders**, and create your first order. Please use **Give feedback** whenever something is confusing. Honest criticism would help me most.
 
-Give each person the [live beta](https://event-profit-watch.kushalkachari993.chatgpt.site/). Ask them to sign in, open **Bakery orders**, and set their business profile before sharing a quote. Avoid asking for passwords or payment details.
+Ask participants to set their business profile before sharing a quote. The feedback form stores their selected step, ease score, note, sign-in email, and delivered-order count at submission; it does not copy order details or finances into the feedback record. Avoid asking for passwords or payment details.
+
+## Ready-to-send check-ins
+
+After their first few days:
+
+> Hi [Name], how did your first order go in the app? Which step took the most effort: pricing, sharing the quote, tracking costs, recording payment, or delivery? You can send a quick note through **Give feedback** in Bakery orders.
+
+At the end of two weeks:
+
+> Thanks for trying the app. Were you able to use it for two real orders? Would you keep using it without a reminder? What one change would make it more useful for your bakery?
 
 ## What participants do
 
