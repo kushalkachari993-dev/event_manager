@@ -22,6 +22,12 @@ export const pilotFeedback = sqliteTable("pilot_feedback", {
   createdAt: text("created_at").notNull(),
 });
 
+export const pilotParticipants = sqliteTable("pilot_participants", {
+  ownerId: text("owner_id").primaryKey(),
+  email: text("email").notNull(),
+  joinedAt: text("joined_at").notNull(),
+});
+
 export const events = sqliteTable("events", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
