@@ -50,3 +50,7 @@ export function buildCustomerMessage(order: EventRecord, profile?: BakeryProfile
   ];
   return lines.join("\n");
 }
+
+export function customerWhatsAppUrl(order: EventRecord, profile?: BakeryProfile): string {
+  return `https://wa.me/?text=${encodeURIComponent(buildCustomerMessage(order, profile))}`;
+}

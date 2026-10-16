@@ -13,7 +13,7 @@ Give each person the [live beta](https://event-profit-watch.kushalkachari993.cha
 ## What participants do
 
 1. Add an order with selling price and estimated ingredients, labour, packaging, and delivery costs.
-2. Preview the customer quote, then share it using **Copy message** or **Print / Save PDF**. The app does not verify that a quote was sent.
+2. Preview the customer quote, then share it using **Open WhatsApp**, **Copy message**, or **Print / Save PDF**. WhatsApp opens a draft that the owner reviews and sends. The app does not verify that a quote was sent.
 3. Record actual costs and customer payments as they occur. Move the order to **Delivered** when complete.
 4. Repeat with a second real order. Use **Give feedback** whenever a step is confusing or slow.
 

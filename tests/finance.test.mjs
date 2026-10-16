@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { belowMarginTarget, categoriesFor, categoryForecast, isCategoryFor, metrics } from "../lib/finance.ts";
 import { orderAttention } from "../lib/order-workflow.ts";
-import { buildCustomerMessage, customerAmounts, customerDocumentTitle } from "../lib/customer-quote.ts";
+import { buildCustomerMessage, customerAmounts, customerDocumentTitle, customerWhatsAppUrl } from "../lib/customer-quote.ts";
 import { parseBakeryProfile } from "../lib/business-profile.ts";
 import { buildWorkspaceExport } from "../lib/workspace-export.ts";
 import { parsePilotFeedback } from "../lib/pilot-feedback.ts";
@@ -91,6 +91,10 @@ test("customer quote includes order and payment details without internal finance
   assert.match(message, /Pickup on/);
   assert.match(message, /Deposit still due/);
   assert.doesNotMatch(message, /profit|supplier|cost|margin|budget/i);
+  const whatsapp = new URL(customerWhatsAppUrl(order));
+  assert.equal(whatsapp.origin, "https://wa.me");
+  assert.equal(whatsapp.pathname, "/");
+  assert.equal(whatsapp.searchParams.get("text"), message);
   assert.equal(customerDocumentTitle({ ...order, orderStatus: "confirmed" }), "Order confirmation");
   assert.equal(belowMarginTarget(100000, 75000, 30), true);
   assert.equal(belowMarginTarget(100000, 65000, 30), false);
@@ -102,7 +106,9 @@ test("bakery profile is validated and brands the customer message", () => {
   assert.equal(parseBakeryProfile({ ...profile, businessName: "" }), null);
   assert.equal(parseBakeryProfile({ ...profile, logoDataUrl: "data:image/svg+xml;base64,PHN2Zz4=" }), null);
   const message = buildCustomerMessage({ ...eventWith(), kind: "bakery", orderStatus: "quoted", orderDescription: "Chocolate cake", quantity: 1, fulfillment: "pickup", fulfillmentTime: "", depositRequiredPaise: 0 }, profile);
+  const shareUrl = customerWhatsAppUrl({ ...eventWith(), kind: "bakery", orderStatus: "quoted", orderDescription: "Chocolate cake", quantity: 1, fulfillment: "pickup", fulfillmentTime: "", depositRequiredPaise: 0 }, profile);
   assert.match(message, /^Asha's Bakes\n\+91 98765 43210\nhello@example.com\nInstagram: @ashasbakes/);
+  assert.equal(new URL(shareUrl).searchParams.get("text"), message);
   assert.doesNotMatch(message, /profit|supplier|cost|margin|budget/i);
 });
 

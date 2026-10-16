@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Printer, X } from "lucide-react";
-import { buildCustomerMessage, customerAmounts, customerDocumentTitle, customerMoney, fulfillmentLabel, profileContactLines } from "../lib/customer-quote";
+import { Check, Copy, MessageCircle, Printer, X } from "lucide-react";
+import { buildCustomerMessage, customerAmounts, customerDocumentTitle, customerMoney, customerWhatsAppUrl, fulfillmentLabel, profileContactLines } from "../lib/customer-quote";
 import type { BakeryProfile } from "../lib/business-profile";
 import type { EventRecord } from "../lib/finance";
 
@@ -33,7 +33,7 @@ export default function CustomerQuoteModal({ order, profile, editProfile, close 
           <p className="customer-document-footer">{customerDocumentTitle(order) === "Custom order quote" ? "Please confirm the order details and deposit with your bakery before production begins." : "Thank you for your order. Please keep this confirmation for your records."}</p>
         </div>
       </article>
-      <div className="modal-actions customer-quote-controls"><button type="button" className="cancel-button" onClick={close}>Close</button><button type="button" className="outline-button" onClick={() => void copyMessage()}>{copied ? <Check size={16}/> : <Copy size={16}/>} {copied ? "Copied" : "Copy message"}</button><button type="button" className="primary-button" onClick={() => window.print()}><Printer size={16}/> Print / Save PDF</button></div>
+      <div className="customer-share-footer customer-quote-controls"><p className="customer-share-help">WhatsApp opens with a draft. Choose your customer and press Send there.</p><div className="modal-actions"><button type="button" className="cancel-button" onClick={close}>Close</button><button type="button" className="outline-button" onClick={() => void copyMessage()}>{copied ? <Check size={16}/> : <Copy size={16}/>} {copied ? "Copied" : "Copy message"}</button><a className="outline-button" href={customerWhatsAppUrl(order, profile)} target="_blank" rel="noopener noreferrer"><MessageCircle size={16}/> Open WhatsApp</a><button type="button" className="primary-button" onClick={() => window.print()}><Printer size={16}/> Print / Save PDF</button></div></div>
     </div>
   </div>;
 }
