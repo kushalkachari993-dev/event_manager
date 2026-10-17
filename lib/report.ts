@@ -1,4 +1,4 @@
-import { categoriesFor, categoryForecast, metrics, ORDER_STAGE_LABELS, vendorPaidPaise, type EventRecord } from "./finance";
+import { bakeryCloseout, categoriesFor, categoryForecast, metrics, ORDER_STAGE_LABELS, vendorPaidPaise, type EventRecord } from "./finance";
 
 const amount = (paise: number) => paise / 100;
 
@@ -20,6 +20,7 @@ export function eventReportFilename(event: EventRecord): string {
 export function buildEventCsv(event: EventRecord): string {
   const result = metrics(event);
   const isBakery = event.kind === "bakery";
+  const closeout = bakeryCloseout(event);
   const lines = [
     row(isBakery ? "Event Profit Watch - Bakery order report" : "Event Profit Watch - Financial report"),
     row(isBakery ? "Order" : "Event", event.name),
@@ -36,6 +37,19 @@ export function buildEventCsv(event: EventRecord): string {
     row("Payments received (INR)", amount(result.received)),
     row(result.balance < 0 ? "Overpaid (INR)" : "Balance due (INR)", amount(Math.abs(result.balance))),
     "",
+    ...(closeout ? [
+      row("Delivered order close-out", closeout.hasOutstanding ? "Provisional" : "Recorded snapshot"),
+      row("Original cost estimate (INR)", amount(closeout.estimatedCost)),
+      row("Expenses recorded (INR)", amount(closeout.recordedCost)),
+      row("Unpaid supplier commitments (INR)", amount(closeout.unpaidSupplierCost)),
+      row("Recorded + committed cost (INR)", amount(closeout.recordedAndCommittedCost)),
+      row("Difference from estimate (INR; positive is below estimate)", amount(closeout.costDifference)),
+      row("Profit based on recorded costs (INR)", amount(closeout.recordedCostProfit)),
+      row("Recorded-cost margin (%)", closeout.recordedCostMargin),
+      row(closeout.customerBalance < 0 ? "Customer overpaid (INR)" : "Customer balance due (INR)", amount(Math.abs(closeout.customerBalance))),
+      row("Close-out note", "Based on entered costs and unpaid supplier commitments. Add missing costs before relying on this profit figure."),
+      "",
+    ] : []),
     row("Category", "Budget (INR)", "Spent (INR)", "Forecast cost (INR)"),
   ];
 

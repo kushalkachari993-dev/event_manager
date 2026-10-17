@@ -1,4 +1,4 @@
-import { categoriesFor, categoryForecast, metrics, ORDER_STAGE_LABELS, vendorPaidPaise, type EventRecord } from "../lib/finance";
+import { bakeryCloseout, categoriesFor, categoryForecast, metrics, ORDER_STAGE_LABELS, vendorPaidPaise, type EventRecord } from "../lib/finance";
 
 const money = (paise: number) => new Intl.NumberFormat("en-IN", {
   style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2,
@@ -10,6 +10,7 @@ const date = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString
 export default function EventReport({ event }: { event: EventRecord }) {
   const result = metrics(event);
   const isBakery = event.kind === "bakery";
+  const closeout = bakeryCloseout(event);
 
   return <article className="print-report">
     <header className="report-header">
@@ -29,6 +30,20 @@ export default function EventReport({ event }: { event: EventRecord }) {
       <div><span>Payments received</span><strong>{money(result.received)}</strong></div>
       <div><span>{result.balance < 0 ? "Overpaid" : "Balance due"}</span><strong>{money(Math.abs(result.balance))}</strong></div>
     </section>
+
+    {closeout && <section className="report-section">
+      <h2>Delivered order close-out · {closeout.hasOutstanding ? "Provisional" : "Recorded snapshot"}</h2>
+      <table><tbody>
+        <tr><th scope="row">Original cost estimate</th><td>{money(closeout.estimatedCost)}</td></tr>
+        <tr><th scope="row">Expenses recorded</th><td>{money(closeout.recordedCost)}</td></tr>
+        <tr><th scope="row">Unpaid supplier commitments</th><td>{money(closeout.unpaidSupplierCost)}</td></tr>
+        <tr><th scope="row">Recorded + committed cost</th><td>{money(closeout.recordedAndCommittedCost)}</td></tr>
+        <tr><th scope="row">Difference from estimate</th><td>{closeout.costDifference < 0 ? `${money(-closeout.costDifference)} above estimate` : `${money(closeout.costDifference)} below estimate`}</td></tr>
+        <tr><th scope="row">Profit based on recorded costs</th><td>{money(closeout.recordedCostProfit)} · {closeout.recordedCostMargin}% margin</td></tr>
+        <tr><th scope="row">{closeout.customerBalance < 0 ? "Customer overpaid" : "Customer balance due"}</th><td>{money(Math.abs(closeout.customerBalance))}</td></tr>
+      </tbody></table>
+      <p className="report-closeout-note">Based on entered expenses and unpaid supplier commitments. Add missing costs before relying on this profit figure; customer payments affect the balance, not the order price.</p>
+    </section>}
 
     <section className="report-section">
       <h2>Cost breakdown</h2>

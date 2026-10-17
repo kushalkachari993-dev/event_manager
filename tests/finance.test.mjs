@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { belowMarginTarget, categoriesFor, categoryForecast, isCategoryFor, metrics } from "../lib/finance.ts";
+import { bakeryCloseout, belowMarginTarget, categoriesFor, categoryForecast, isCategoryFor, metrics } from "../lib/finance.ts";
 import { orderAttention } from "../lib/order-workflow.ts";
 import { buildCustomerMessage, customerAmounts, customerDocumentTitle, customerWhatsAppUrl } from "../lib/customer-quote.ts";
 import { parseBakeryProfile } from "../lib/business-profile.ts";
@@ -64,6 +64,35 @@ test("bakery orders use ingredient costs without event-only categories", () => {
   assert.equal(isCategoryFor("Ingredients", "event"), false);
   assert.equal(metrics(order).projectedCost, 122000);
   assert.equal(metrics(order).projectedProfit, 128000);
+});
+
+test("delivered order close-out compares recorded costs without counting supplier payments twice", () => {
+  const order = {
+    ...eventWith(), kind: "bakery", orderStatus: "delivered", quotePaise: 250000,
+    budgets: [{ category: "Ingredients", plannedPaise: 130000 }],
+    commitments: [{ id: "vendor", vendor: "Supplier", category: "Ingredients", agreedPaise: 80000, dueOn: "2026-10-18" }],
+    expenses: [
+      { id: "paid", commitmentId: "vendor", category: "Ingredients", amountPaise: 20000, description: "Deposit", spentOn: "2026-10-12" },
+      { id: "box", commitmentId: null, category: "Packaging", amountPaise: 10000, description: "Box", spentOn: "2026-10-12" },
+    ],
+    payments: [{ amountPaise: 100000 }],
+  };
+  const closeout = bakeryCloseout(order);
+  assert.equal(metrics(order).projectedProfit, 110000);
+  assert.deepEqual(closeout, {
+    estimatedCost: 130000, recordedCost: 30000, unpaidSupplierCost: 60000,
+    recordedAndCommittedCost: 90000, costDifference: 40000,
+    recordedCostProfit: 160000, recordedCostMargin: 64,
+    customerBalance: 150000, hasOutstanding: true,
+  });
+  assert.equal(bakeryCloseout({ ...order, orderStatus: "confirmed" }), null);
+  assert.equal(bakeryCloseout({ ...order, kind: "event" }), null);
+  const settled = { ...order,
+    expenses: [...order.expenses, { id: "paid-rest", commitmentId: "vendor", category: "Ingredients", amountPaise: 60000, description: "Balance", spentOn: "2026-10-13" }],
+    payments: [...order.payments, { amountPaise: 150000 }],
+  };
+  assert.equal(bakeryCloseout(settled).recordedCostProfit, 160000);
+  assert.equal(bakeryCloseout(settled).hasOutstanding, false);
 });
 
 test("bakery delivery and payment attention follows the order stage", () => {

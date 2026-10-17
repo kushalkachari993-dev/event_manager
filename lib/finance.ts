@@ -86,6 +86,24 @@ export function metrics(event: EventRecord) {
   return { planned, spent, unpaidCommitments, projectedCost, projectedProfit, received, balance: event.quotePaise - received, margin: event.quotePaise ? Math.round((projectedProfit / event.quotePaise) * 100) : 0 };
 }
 
+export function bakeryCloseout(order: EventRecord) {
+  if (order.kind !== "bakery" || order.orderStatus !== "delivered") return null;
+  const result = metrics(order);
+  const recordedAndCommittedCost = result.spent + result.unpaidCommitments;
+  const recordedCostProfit = order.quotePaise - recordedAndCommittedCost;
+  return {
+    estimatedCost: result.planned,
+    recordedCost: result.spent,
+    unpaidSupplierCost: result.unpaidCommitments,
+    recordedAndCommittedCost,
+    costDifference: result.planned - recordedAndCommittedCost,
+    recordedCostProfit,
+    recordedCostMargin: order.quotePaise ? Math.round((recordedCostProfit / order.quotePaise) * 100) : 0,
+    customerBalance: result.balance,
+    hasOutstanding: result.unpaidCommitments > 0 || result.balance > 0,
+  };
+}
+
 export function belowMarginTarget(quotePaise: number, costPaise: number, targetMarginPct: number): boolean {
   return quotePaise > 0 && (quotePaise - costPaise) * 100 < quotePaise * targetMarginPct;
 }
