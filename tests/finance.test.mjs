@@ -5,6 +5,7 @@ import { orderAttention } from "../lib/order-workflow.ts";
 import { buildCustomerMessage, customerAmounts, customerDocumentTitle, customerWhatsAppUrl } from "../lib/customer-quote.ts";
 import { parseBakeryProfile } from "../lib/business-profile.ts";
 import { buildWorkspaceExport } from "../lib/workspace-export.ts";
+import { parseWorkspaceBackup, planWorkspaceRestore } from "../lib/workspace-restore.ts";
 import { parsePilotFeedback } from "../lib/pilot-feedback.ts";
 
 test("pilot feedback accepts useful notes and rejects invalid scores or oversized text", () => {
@@ -132,4 +133,46 @@ test("full workspace export keeps archived records and nested transactions witho
   assert.equal(backup.bakeryProfile?.businessName, "Test Bakery");
   assert.equal(JSON.stringify(backup).includes("account-one"), false);
   assert.equal(JSON.stringify(backup).includes("another-owner"), false);
+});
+
+function restoreFixture() {
+  const stamp = "2026-10-16T12:00:00.000Z";
+  return buildWorkspaceExport({
+    events: [{ id: "order-1", ownerId: "original-owner", kind: "bakery", orderStatus: "delivered", orderDescription: "Chocolate cake", quantity: 1, fulfillment: "pickup", fulfillmentTime: "16:30", depositRequiredPaise: 50000, targetMarginPct: 30, name: "Birthday cake", client: "Asha", eventDate: "2026-10-20", quotePaise: 200000, createdAt: stamp, archivedAt: stamp }],
+    budgets: [{ id: "budget-1", eventId: "order-1", category: "Ingredients", plannedPaise: 50000 }],
+    commitments: [{ id: "vendor-1", eventId: "order-1", vendor: "Chocolate supplier", category: "Ingredients", agreedPaise: 30000, dueOn: "2026-10-19", createdAt: stamp }],
+    expenses: [{ id: "cost-1", eventId: "order-1", commitmentId: "vendor-1", category: "Ingredients", description: "Chocolate", amountPaise: 10000, spentOn: "2026-10-16", createdAt: stamp }],
+    payments: [{ id: "payment-1", eventId: "order-1", amountPaise: 50000, receivedOn: "2026-10-16", note: "Deposit", createdAt: stamp }],
+    bakeryProfile: { ownerId: "original-owner", businessName: "Asha Bakes", phone: "", email: "", instagram: "", logoDataUrl: "", updatedAt: stamp },
+  }, stamp);
+}
+
+test("a downloaded backup previews missing records and repeated restores without overwriting", () => {
+  const parsed = parseWorkspaceBackup(restoreFixture());
+  assert.ok(parsed.backup);
+  const empty = { events: new Map(), budgets: new Map(), commitments: new Map(), expenses: new Map(), payments: new Map(), hasProfile: false };
+  const first = planWorkspaceRestore(parsed.backup, "new-owner", empty);
+  assert.deepEqual(first.summary.toAdd, { events: 0, orders: 1, budgets: 1, commitments: 1, expenses: 1, payments: 1 });
+  assert.equal(first.summary.profile, "restore");
+  assert.equal(first.records[0].archivedAt, "2026-10-16T12:00:00.000Z");
+  const current = {
+    events: new Map([["order-1", { ownerId: "new-owner", kind: "bakery" }]]),
+    budgets: new Map([["budget-1", "order-1"]]), commitments: new Map([["vendor-1", "order-1"]]),
+    expenses: new Map(), payments: new Map([["payment-1", "order-1"]]), hasProfile: true,
+  };
+  const second = planWorkspaceRestore(parsed.backup, "new-owner", current);
+  assert.deepEqual(second.summary.toAdd, { events: 0, orders: 0, budgets: 0, commitments: 0, expenses: 1, payments: 0 });
+  assert.equal(second.expenses[0].id, "cost-1");
+  assert.equal(second.summary.profile, "keep-existing");
+  assert.equal(second.records.length, 0);
+  assert.throws(() => planWorkspaceRestore(parsed.backup, "another-owner", current), /conflicts/);
+});
+
+test("restore rejects altered relationships and invalid values before writing", () => {
+  const backup = restoreFixture();
+  assert.equal(parseWorkspaceBackup({ ...backup, version: 2 }).backup, undefined);
+  assert.equal(parseWorkspaceBackup({ ...backup, records: [{ ...backup.records[0], quotePaise: -1 }] }).backup, undefined);
+  assert.match(parseWorkspaceBackup({ ...backup, records: [{ ...backup.records[0], expenses: [{ ...backup.records[0].expenses[0], eventId: "another-order" }] }] }).error, /mismatched/);
+  assert.match(parseWorkspaceBackup({ ...backup, records: [{ ...backup.records[0], expenses: [{ ...backup.records[0].expenses[0], commitmentId: "missing" }] }] }).error, /missing supplier/);
+  assert.match(parseWorkspaceBackup({ ...backup, records: [backup.records[0], backup.records[0]] }).error, /repeated event/);
 });

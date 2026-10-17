@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Archive, ArrowDownRight, ArrowRight, CakeSlice, CalendarDays, Check, ChevronDown, CircleHelp, Download, IndianRupee, Layers3, MessageSquare, Pencil, Plus, Printer, RotateCcw, Settings2, Sparkles, Trash2, TrendingUp, Wallet, X } from "lucide-react";
+import { Archive, ArrowDownRight, ArrowRight, CakeSlice, CalendarDays, Check, ChevronDown, CircleHelp, Download, IndianRupee, Layers3, MessageSquare, Pencil, Plus, Printer, RotateCcw, Settings2, Sparkles, Trash2, TrendingUp, Upload, Wallet, X } from "lucide-react";
 import { belowMarginTarget, categoriesFor, categoryForecast, formatCurrency as currency, metrics, ORDER_STAGES, ORDER_STAGE_LABELS, type BusinessKind, type Category, type EventRecord, type Fulfillment, type OrderStatus } from "../lib/finance";
 import { ATTENTION_LABELS, orderAttention } from "../lib/order-workflow";
 import { buildEventCsv, eventReportFilename } from "../lib/report";
@@ -10,6 +10,7 @@ import VendorCommitments from "./vendor-commitments";
 import CustomerQuoteModal from "./customer-quote";
 import BakeryProfileModal from "./bakery-profile";
 import PilotGuide from "./pilot-guide";
+import WorkspaceRestore from "./workspace-restore";
 import { emptyBakeryProfile, type BakeryProfile } from "../lib/business-profile";
 
 const today = () => {
@@ -35,6 +36,7 @@ export default function Dashboard({ displayName, canReviewPilot = false }: { dis
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showRestore, setShowRestore] = useState(false);
   const [error, setError] = useState("");
   const [bakeryProfile, setBakeryProfile] = useState<BakeryProfile>(emptyBakeryProfile);
   const [profileError, setProfileError] = useState("");
@@ -224,14 +226,14 @@ export default function Dashboard({ displayName, canReviewPilot = false }: { dis
             </section>}
           </>}
           {(view === "events" || view === "bakery") && archivedItems.length > 0 && <section className="archive-section"><div className="section-heading"><div><span className="section-kicker">PAST WORK</span><h2>{isBakery ? "Archived orders" : "Archived events"} <span className="count">{archivedItems.length}</span></h2></div></div><div className="archive-list">{archivedItems.map((item) => <div className="archive-row" key={item.id}><div><strong>{item.name}</strong><span>{prettyDate(item.eventDate)} · {currency(item.quotePaise)} {isBakery ? "price" : "quote"}</span></div><button type="button" className="outline-button" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(item.id)}`, { action: "restore" }, "PATCH")}><RotateCcw size={14}/> Restore</button></div>)}</div></section>}
-          {view === "overview" && <section className="workspace-export-card"><div><span className="section-kicker">YOUR DATA</span><h2>Keep a copy of your workspace</h2><p>Download a JSON file with all events and bakery orders, including archived work, budgets, supplier commitments, expenses, payments, and your bakery profile. Importing a backup into the app is not available yet.</p></div><button type="button" className="outline-button" disabled={exporting} onClick={() => void downloadWorkspace()}><Download size={16}/> {exporting ? "Preparing backup…" : "Download full backup"}</button></section>}
+          {view === "overview" && <section className="workspace-export-card"><div><span className="section-kicker">YOUR DATA</span><h2>Keep a copy of your workspace</h2><p>Download a JSON backup of your events, bakery orders, costs, payments, and bakery profile. Restore missing data from a backup later; your current records will not be overwritten.</p></div><div className="workspace-export-actions"><button type="button" className="outline-button" disabled={exporting} onClick={() => void downloadWorkspace()}><Download size={16}/> {exporting ? "Preparing backup…" : "Download full backup"}</button><button type="button" className="outline-button" onClick={() => setShowRestore(true)}><Upload size={16}/> Restore backup</button></div></section>}
         </>}
       </div>
     </main>
     {(mode === "event" || mode === "edit-event") && <EventModal kind={workspaceKind} eventRecord={mode === "edit-event" ? selected : null} error={error} close={() => setMode(null)} saving={saving} submit={(data) => submit(mode === "edit-event" && selected ? `/api/events/${encodeURIComponent(selected.id)}` : "/api/events", data, mode === "edit-event" ? "PATCH" : "POST")} />}
     {(mode === "expense" || mode === "edit-expense") && selected && <ExpenseModal kind={selected.kind} eventName={selected.name} eventId={selected.id} expense={mode === "edit-expense" ? editingExpense : undefined} commitment={selected.commitments.find((item) => item.id === (mode === "edit-expense" ? editingExpense?.commitmentId : recordingCommitmentId))} error={error} close={() => { setMode(null); setEditingExpenseId(null); setRecordingCommitmentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-expense" && editingExpense ? `/api/expenses/${encodeURIComponent(editingExpense.id)}` : "/api/expenses", data, mode === "edit-expense" ? "PATCH" : "POST")} />}
     {(mode === "payment" || mode === "edit-payment") && selected && <PaymentModal kind={selected.kind} eventName={selected.name} eventId={selected.id} payment={mode === "edit-payment" ? editingPayment : undefined} error={error} close={() => { setMode(null); setEditingPaymentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-payment" && editingPayment ? `/api/payments/${encodeURIComponent(editingPayment.id)}` : "/api/payments", data, mode === "edit-payment" ? "PATCH" : "POST")} />}
-  </div>{mode === "customer-quote" && selected?.kind === "bakery" && <CustomerQuoteModal order={selected} profile={bakeryProfile} editProfile={() => setMode("bakery-profile")} close={() => setMode(null)}/>}{mode === "bakery-profile" && <BakeryProfileModal profile={bakeryProfile} close={() => setMode(null)} saved={(profile) => { setBakeryProfile(profile); setProfileError(""); setMode(null); }}/>}{selected && mode !== "customer-quote" && <EventReport event={selected} />}</>;
+  </div>{mode === "customer-quote" && selected?.kind === "bakery" && <CustomerQuoteModal order={selected} profile={bakeryProfile} editProfile={() => setMode("bakery-profile")} close={() => setMode(null)}/>}{mode === "bakery-profile" && <BakeryProfileModal profile={bakeryProfile} close={() => setMode(null)} saved={(profile) => { setBakeryProfile(profile); setProfileError(""); setMode(null); }}/>} {showRestore && <WorkspaceRestore close={() => setShowRestore(false)}/>} {selected && mode !== "customer-quote" && <EventReport event={selected} />}</>;
 }
 
 function Metric({ icon, label, value, note, tone }: { icon: React.ReactNode; label: string; value: string; note: string; tone: string }) {
