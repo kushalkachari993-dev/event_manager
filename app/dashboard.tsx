@@ -29,6 +29,7 @@ export default function Dashboard({ displayName, canReviewPilot = false }: { dis
   const [items, setItems] = useState<EventRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>(null);
+  const [copySource, setCopySource] = useState<EventRecord | null>(null);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [recordingCommitmentId, setRecordingCommitmentId] = useState<string | null>(null);
@@ -90,6 +91,18 @@ export default function Dashboard({ displayName, canReviewPilot = false }: { dis
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function startNewRecord() {
+    setError("");
+    setCopySource(null);
+    setMode("event");
+  }
+
+  function duplicateOrder(order: EventRecord) {
+    setError("");
+    setCopySource(order);
+    setMode("event");
+  }
+
   async function submit(path: string, payload: unknown, method = "POST") {
     setSaving(true); setError("");
     try {
@@ -99,6 +112,7 @@ export default function Dashboard({ displayName, canReviewPilot = false }: { dis
       await load();
       if (data.id) { setSelectedId(data.id); setView(isBakery ? "bakery" : "events"); }
       setMode(null);
+      setCopySource(null);
       setEditingExpenseId(null);
       setEditingPaymentId(null);
       setRecordingCommitmentId(null);
@@ -173,11 +187,11 @@ export default function Dashboard({ displayName, canReviewPilot = false }: { dis
       <header className="topbar"><div className="crumb">Workspace <span>/</span> <strong>{view === "overview" ? "Overview" : isBakery ? "Bakery orders" : "Events"}</strong></div><div className="topbar-right"><span className="secure-pill"><span/> Private dashboard</span><div className="small-avatar">{firstName.slice(0, 1).toUpperCase()}</div></div></header>
       <nav className="mobile-nav" aria-label="Workspace"><button type="button" className={view === "overview" ? "active" : ""} onClick={() => switchView("overview")}>Overview</button><button type="button" className={view === "events" ? "active" : ""} onClick={() => switchView("events")}>Events</button><button type="button" className={view === "bakery" ? "active" : ""} onClick={() => switchView("bakery")}>Bakery</button></nav>
       <div className={`content ${view !== "overview" ? "events-view" : ""}`}>
-        <section className="heading"><div><div className="eyebrow">{isBakery ? "YOUR CUSTOM-ORDER WORKSPACE" : view === "overview" ? "YOUR FINANCIAL CONTROL ROOM" : "YOUR EVENT WORKSPACE"}</div><h1>{isBakery ? "Your bakery orders" : view === "overview" ? <>Good morning, {firstName} <span className="wave">✳</span></> : "Your events"}</h1><p>{isBakery ? "Price each order, track ingredient costs, and protect your margin." : view === "overview" ? "Keep your event costs in view and your margins on track." : "Review budgets, expenses, and projected profit for every event."}</p></div><div className="heading-actions">{isBakery && <button type="button" className="outline-button" onClick={() => setMode("bakery-profile")}><Settings2 size={16}/> Business profile</button>}<button className="primary-button" onClick={() => { setError(""); setMode("event"); }}><Plus size={18}/> {isBakery ? "New order" : "New event"}</button></div></section>
+        <section className="heading"><div><div className="eyebrow">{isBakery ? "YOUR CUSTOM-ORDER WORKSPACE" : view === "overview" ? "YOUR FINANCIAL CONTROL ROOM" : "YOUR EVENT WORKSPACE"}</div><h1>{isBakery ? "Your bakery orders" : view === "overview" ? <>Good morning, {firstName} <span className="wave">✳</span></> : "Your events"}</h1><p>{isBakery ? "Price each order, track ingredient costs, and protect your margin." : view === "overview" ? "Keep your event costs in view and your margins on track." : "Review budgets, expenses, and projected profit for every event."}</p></div><div className="heading-actions">{isBakery && <button type="button" className="outline-button" onClick={() => setMode("bakery-profile")}><Settings2 size={16}/> Business profile</button>}<button className="primary-button" onClick={startNewRecord}><Plus size={18}/> {isBakery ? "New order" : "New event"}</button></div></section>
         {isBakery && profileError && <div role="alert" className="error-banner">{profileError}<button onClick={() => setProfileError("")} aria-label="Dismiss error"><X size={16}/></button></div>}
         {error && <div role="alert" className="error-banner">{error}<button onClick={() => setError("")} aria-label="Dismiss error"><X size={16}/></button></div>}
         {loading ? <div className="loading">Loading your workspace…</div> : <>
-          {isBakery && <PilotGuide orders={items.filter((item) => item.kind === "bakery")} createOrder={() => { setError(""); setMode("event"); }} />}
+          {isBakery && <PilotGuide orders={items.filter((item) => item.kind === "bakery")} createOrder={startNewRecord} />}
           {view !== "events" && <section className="metric-grid">
             <Metric icon={isBakery ? <CakeSlice size={20}/> : <CalendarDays size={20}/>} label={isBakery ? "Active orders" : "Active events"} value={String(activeItems.length)} note={isBakery ? "Orders in your workspace" : "Events in your workspace"} tone="purple" />
             <Metric icon={<TrendingUp size={20}/>} label="Projected profit" value={currency(totals.forecast)} note={isBakery ? "Includes supplier commitments" : "Includes vendor commitments"} tone="green" />
@@ -185,12 +199,12 @@ export default function Dashboard({ displayName, canReviewPilot = false }: { dis
             <Metric icon={<IndianRupee size={20}/>} label={isBakery ? "Customer balance due" : "Client balance due"} value={currency(totals.balanceDue)} note={isBakery ? "Unpaid across active orders" : "Unpaid across active events"} tone="orange" />
           </section>}
 
-          {activeItems.length === 0 ? <div className="empty-layout"><div className="empty-card"><div className="empty-icon">{isBakery ? <CakeSlice size={30}/> : <Layers3 size={30}/>}</div><span className="section-kicker">START HERE</span><h2>{isBakery ? "Know the profit on every custom order." : "Make your next event more profitable."}</h2><p>{isBakery ? "Add an order with its selling price and estimated ingredients, labour, packaging, and delivery costs. Record what you actually spend and receive as the order moves forward." : "Add an event with your quote and category budgets. Then record expenses as they happen to see your projected profit update."}</p><button className="primary-button" onClick={() => setMode("event")}><Plus size={18}/> {isBakery ? "Create first order" : "Create first event"}</button></div><div className="how-card"><span className="section-kicker">HOW IT WORKS</span><div className="how-row"><span>01</span><div><strong>Plan</strong><p>{isBakery ? "Set a selling price and estimate each cost." : "Set a quote and budget by category."}</p></div></div><div className="how-row"><span>02</span><div><strong>Track</strong><p>Log each actual expense and customer payment.</p></div></div><div className="how-row"><span>03</span><div><strong>Protect</strong><p>Spot overruns before they eat your margin.</p></div></div></div></div> : <>
+          {activeItems.length === 0 ? <div className="empty-layout"><div className="empty-card"><div className="empty-icon">{isBakery ? <CakeSlice size={30}/> : <Layers3 size={30}/>}</div><span className="section-kicker">START HERE</span><h2>{isBakery ? "Know the profit on every custom order." : "Make your next event more profitable."}</h2><p>{isBakery ? "Add an order with its selling price and estimated ingredients, labour, packaging, and delivery costs. Record what you actually spend and receive as the order moves forward." : "Add an event with your quote and category budgets. Then record expenses as they happen to see your projected profit update."}</p><button className="primary-button" onClick={startNewRecord}><Plus size={18}/> {isBakery ? "Create first order" : "Create first event"}</button></div><div className="how-card"><span className="section-kicker">HOW IT WORKS</span><div className="how-row"><span>01</span><div><strong>Plan</strong><p>{isBakery ? "Set a selling price and estimate each cost." : "Set a quote and budget by category."}</p></div></div><div className="how-row"><span>02</span><div><strong>Track</strong><p>Log each actual expense and customer payment.</p></div></div><div className="how-row"><span>03</span><div><strong>Protect</strong><p>Spot overruns before they eat your margin.</p></div></div></div></div> : <>
             <div className="section-heading"><div><span className="section-kicker">YOUR PORTFOLIO</span><h2>{isBakery ? "Orders" : "Events"} <span className="count">{activeItems.length}</span></h2></div><span className="subtle">Select {isBakery ? "an order" : "an event"} to inspect its costs</span></div>
             <div className="event-tabs">{activeItems.map((item) => { const m = metrics(item); return <button key={item.id} className={`event-tab ${selected?.id === item.id ? "selected" : ""}`} onClick={() => setSelectedId(item.id)}><span className="event-tab-icon">{isBakery ? <CakeSlice size={18}/> : <CalendarDays size={18}/>}</span><span><strong>{item.name}</strong><small>{prettyDate(item.eventDate)} · {currency(item.quotePaise)} {isBakery ? "price" : "quote"}{isBakery ? ` · ${ORDER_STAGE_LABELS[item.orderStatus]}` : ""}</small></span><span className={`tab-profit ${m.projectedProfit < 0 ? "negative" : ""}`}>{currency(m.projectedProfit)} <ArrowRight size={16}/></span></button>; })}</div>
             {isBakery && selected && <BakeryOrderWorkflow orders={activeItems} selected={selected} saving={saving} select={setSelectedId} update={(status) => void submit(`/api/events/${encodeURIComponent(selected.id)}`, { action: "set-order-status", status }, "PATCH")}/>}
             {selectedBelowTarget && selected && selectedMetrics && <div className="forecast-margin-alert" role="alert"><strong>Below your margin target</strong><span>Current projected margin is {selectedMetrics.margin}%; your private target is {selected.targetMarginPct}%. Review the price or costs before confirming this order.</span></div>}
-            {selected && selectedMetrics && <div className="detail-grid"><section className="detail-card"><div className="detail-top"><div><span className="section-kicker">PROFIT FORECAST</span><h2>{selected.name}</h2><p>{selected.client || (isBakery ? "Customer not specified" : "Client not specified")} <span>·</span> {prettyDate(selected.eventDate)}</p></div><div className={`status ${(selectedMetrics.projectedProfit < 0 || selectedBelowTarget) ? "at-risk" : ""}`}><span/> {selectedMetrics.projectedProfit < 0 ? "At risk" : selectedBelowTarget ? "Below target" : "On track"}</div></div><div className="record-actions"><button type="button" className="text-button" onClick={() => { setError(""); setMode("edit-event"); }}><Pencil size={14}/> {isBakery ? "Edit order & costs" : "Edit event & budgets"}</button><button type="button" className="text-button muted-action" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(selected.id)}`, { action: "archive" }, "PATCH")}><Archive size={14}/> {isBakery ? "Archive order" : "Archive event"}</button></div><div className="profit-feature"><div><span>Projected profit</span><strong className={selectedMetrics.projectedProfit < 0 ? "negative-text" : ""}>{currency(selectedMetrics.projectedProfit)}</strong><small>{selectedMetrics.margin}% projected margin</small></div><div className="profit-graphic"><TrendingUp size={46} strokeWidth={1.4}/></div></div><div className="finance-row"><div><span>{isBakery ? "Order price" : "Client quote"}</span><strong>{currency(selected.quotePaise)}</strong></div><div><span>Planned costs</span><strong>{currency(selectedMetrics.planned)}</strong></div><div><span>Spent so far</span><strong>{currency(selectedMetrics.spent)}</strong></div><div><span>Projected cost</span><strong>{currency(selectedMetrics.projectedCost)}</strong></div></div><div className="formula"><CircleHelp size={16}/><span>Forecast uses the higher of each category budget or paid costs plus unpaid {isBakery ? "supplier" : "vendor"} commitments.</span></div></section>
+            {selected && selectedMetrics && <div className="detail-grid"><section className="detail-card"><div className="detail-top"><div><span className="section-kicker">PROFIT FORECAST</span><h2>{selected.name}</h2><p>{selected.client || (isBakery ? "Customer not specified" : "Client not specified")} <span>·</span> {prettyDate(selected.eventDate)}</p></div><div className={`status ${(selectedMetrics.projectedProfit < 0 || selectedBelowTarget) ? "at-risk" : ""}`}><span/> {selectedMetrics.projectedProfit < 0 ? "At risk" : selectedBelowTarget ? "Below target" : "On track"}</div></div><div className="record-actions"><button type="button" className="text-button" onClick={() => { setError(""); setMode("edit-event"); }}><Pencil size={14}/> {isBakery ? "Edit order & costs" : "Edit event & budgets"}</button>{isBakery && <button type="button" className="text-button" onClick={() => duplicateOrder(selected)}><RotateCcw size={14}/> Duplicate order</button>}<button type="button" className="text-button muted-action" disabled={saving} onClick={() => void submit(`/api/events/${encodeURIComponent(selected.id)}`, { action: "archive" }, "PATCH")}><Archive size={14}/> {isBakery ? "Archive order" : "Archive event"}</button></div><div className="profit-feature"><div><span>Projected profit</span><strong className={selectedMetrics.projectedProfit < 0 ? "negative-text" : ""}>{currency(selectedMetrics.projectedProfit)}</strong><small>{selectedMetrics.margin}% projected margin</small></div><div className="profit-graphic"><TrendingUp size={46} strokeWidth={1.4}/></div></div><div className="finance-row"><div><span>{isBakery ? "Order price" : "Client quote"}</span><strong>{currency(selected.quotePaise)}</strong></div><div><span>Planned costs</span><strong>{currency(selectedMetrics.planned)}</strong></div><div><span>Spent so far</span><strong>{currency(selectedMetrics.spent)}</strong></div><div><span>Projected cost</span><strong>{currency(selectedMetrics.projectedCost)}</strong></div></div><div className="formula"><CircleHelp size={16}/><span>Forecast uses the higher of each category budget or paid costs plus unpaid {isBakery ? "supplier" : "vendor"} commitments.</span></div></section>
             <section className="detail-card cost-card"><div className="cost-heading"><div><span className="section-kicker">WHERE THE MONEY GOES</span><h2>Cost breakdown</h2></div><button className="outline-button" onClick={() => { setError(""); setRecordingCommitmentId(null); setMode("expense"); }}><Plus size={16}/> Add expense</button></div><div className="category-list">{categoriesFor(selected.kind).map((category) => { const { budget, spent, unpaidCommitments, forecast } = categoryForecast(selected, category); const progress = budget ? Math.min(100, (spent / budget) * 100) : spent ? 100 : 0; return <div className="category-row" key={category}><div className="category-line"><strong>{category}</strong><span className={forecast > budget ? "overrun" : ""}>{currency(spent)} <em>/ {currency(budget)}</em></span></div><div className="progress"><span className={forecast > budget ? "overrun-fill" : ""} style={{ width: `${progress}%` }}/></div>{unpaidCommitments > 0 && <div className="category-forecast">{currency(unpaidCommitments)} unpaid · {currency(forecast)} forecast</div>}</div>; })}</div></section></div>}
             {selected && (
               <VendorCommitments key={selected.id} event={selected} onRefresh={load} onRecordPayment={(commitmentId) => { setError(""); setRecordingCommitmentId(commitmentId); setMode("expense"); }}/>
@@ -230,7 +244,7 @@ export default function Dashboard({ displayName, canReviewPilot = false }: { dis
         </>}
       </div>
     </main>
-    {(mode === "event" || mode === "edit-event") && <EventModal kind={workspaceKind} eventRecord={mode === "edit-event" ? selected : null} error={error} close={() => setMode(null)} saving={saving} submit={(data) => submit(mode === "edit-event" && selected ? `/api/events/${encodeURIComponent(selected.id)}` : "/api/events", data, mode === "edit-event" ? "PATCH" : "POST")} />}
+    {(mode === "event" || mode === "edit-event") && <EventModal kind={workspaceKind} eventRecord={mode === "edit-event" ? selected : null} copySource={mode === "event" ? copySource : null} error={error} close={() => { setMode(null); setCopySource(null); }} saving={saving} submit={(data) => submit(mode === "edit-event" && selected ? `/api/events/${encodeURIComponent(selected.id)}` : "/api/events", data, mode === "edit-event" ? "PATCH" : "POST")} />}
     {(mode === "expense" || mode === "edit-expense") && selected && <ExpenseModal kind={selected.kind} eventName={selected.name} eventId={selected.id} expense={mode === "edit-expense" ? editingExpense : undefined} commitment={selected.commitments.find((item) => item.id === (mode === "edit-expense" ? editingExpense?.commitmentId : recordingCommitmentId))} error={error} close={() => { setMode(null); setEditingExpenseId(null); setRecordingCommitmentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-expense" && editingExpense ? `/api/expenses/${encodeURIComponent(editingExpense.id)}` : "/api/expenses", data, mode === "edit-expense" ? "PATCH" : "POST")} />}
     {(mode === "payment" || mode === "edit-payment") && selected && <PaymentModal kind={selected.kind} eventName={selected.name} eventId={selected.id} payment={mode === "edit-payment" ? editingPayment : undefined} error={error} close={() => { setMode(null); setEditingPaymentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-payment" && editingPayment ? `/api/payments/${encodeURIComponent(editingPayment.id)}` : "/api/payments", data, mode === "edit-payment" ? "PATCH" : "POST")} />}
   </div>{mode === "customer-quote" && selected?.kind === "bakery" && <CustomerQuoteModal order={selected} profile={bakeryProfile} editProfile={() => setMode("bakery-profile")} close={() => setMode(null)}/>}{mode === "bakery-profile" && <BakeryProfileModal profile={bakeryProfile} close={() => setMode(null)} saved={(profile) => { setBakeryProfile(profile); setProfileError(""); setMode(null); }}/>} {showRestore && <WorkspaceRestore close={() => setShowRestore(false)}/>} {selected && mode !== "customer-quote" && <EventReport event={selected} />}</>;
@@ -264,29 +278,31 @@ function BakeryOrderWorkflow({ orders, selected, saving, select, update }: {
   </section>;
 }
 
-function EventModal({ kind, eventRecord, error, close, saving, submit }: {
+function EventModal({ kind, eventRecord, copySource, error, close, saving, submit }: {
   kind: BusinessKind;
   eventRecord: EventRecord | null;
+  copySource: EventRecord | null;
   error: string;
   close: () => void;
   saving: boolean;
   submit: (data: unknown) => void;
 }) {
-  const recordKind = eventRecord?.kind ?? kind;
+  const recordKind = eventRecord?.kind ?? copySource?.kind ?? kind;
   const isBakery = recordKind === "bakery";
   const categories = categoriesFor(recordKind);
-  const [name, setName] = useState(eventRecord?.name ?? "");
+  const source = eventRecord ?? copySource;
+  const [name, setName] = useState(source?.name ?? "");
   const [client, setClient] = useState(eventRecord?.client ?? "");
   const [eventDate, setDate] = useState(eventRecord?.eventDate ?? today());
-  const [quote, setQuote] = useState(eventRecord ? String(eventRecord.quotePaise / 100) : "");
+  const [quote, setQuote] = useState(source ? String(source.quotePaise / 100) : "");
   const [orderDescription, setOrderDescription] = useState(eventRecord?.orderDescription ?? "");
-  const [quantity, setQuantity] = useState(String(eventRecord?.quantity ?? 1));
-  const [fulfillment, setFulfillment] = useState<Fulfillment>(eventRecord?.fulfillment ?? "delivery");
+  const [quantity, setQuantity] = useState(String(source?.quantity ?? 1));
+  const [fulfillment, setFulfillment] = useState<Fulfillment>(source?.fulfillment ?? "delivery");
   const [fulfillmentTime, setFulfillmentTime] = useState(eventRecord?.fulfillmentTime ?? "");
-  const [depositRequired, setDepositRequired] = useState(eventRecord ? String(eventRecord.depositRequiredPaise / 100) : "");
-  const [targetMarginPct, setTargetMarginPct] = useState(String(eventRecord?.targetMarginPct ?? 30));
+  const [depositRequired, setDepositRequired] = useState(source ? String(source.depositRequiredPaise / 100) : "");
+  const [targetMarginPct, setTargetMarginPct] = useState(String(source?.targetMarginPct ?? 30));
   const [budgets, setBudgets] = useState<Record<string, string>>(Object.fromEntries(categories.map((category) => [category,
-    eventRecord ? String((eventRecord.budgets.find((row) => row.category === category)?.plannedPaise ?? 0) / 100) : ""] )));
+    source ? String((source.budgets.find((row) => row.category === category)?.plannedPaise ?? 0) / 100) : ""] )));
   const planned = categories.reduce((sum, category) => sum + (Number(budgets[category]) || 0), 0);
   const quotePaise = Math.round((Number(quote) || 0) * 100);
   const plannedPaise = Math.round(planned * 100);
@@ -302,11 +318,12 @@ function EventModal({ kind, eventRecord, error, close, saving, submit }: {
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
     <form className="modal" onSubmit={onSubmit}>
       <div className="modal-header"><div>
-        <span className="section-kicker">{isBakery ? eventRecord ? "EDIT ORDER" : "NEW BAKERY ORDER" : eventRecord ? "EDIT EVENT" : "NEW EVENT"}</span>
-        <h2>{eventRecord ? isBakery ? "Edit order & costs" : "Edit event & budgets" : "Plan your profit"}</h2>
-        <p>{isBakery ? "Price this custom order before you commit to it." : "Start with your quote and estimated costs."}</p>
+        <span className="section-kicker">{isBakery ? eventRecord ? "EDIT ORDER" : copySource ? "DUPLICATE ORDER" : "NEW BAKERY ORDER" : eventRecord ? "EDIT EVENT" : "NEW EVENT"}</span>
+        <h2>{eventRecord ? isBakery ? "Edit order & costs" : "Edit event & budgets" : copySource ? "Create a similar order" : "Plan your profit"}</h2>
+        <p>{copySource ? `Based on “${copySource.name}”. Review the price and estimates for this order.` : isBakery ? "Price this custom order before you commit to it." : "Start with your quote and estimated costs."}</p>
       </div><button type="button" className="icon-button" onClick={close} aria-label="Close"><X size={20}/></button></div>
       {error && <div role="alert" className="modal-error">{error}</div>}
+      {copySource && <p className="copy-order-note">Customer, delivery date and time, custom order details, payments, expenses, and supplier commitments start fresh.</p>}
       <div className="modal-body">
         <div className="field"><label htmlFor="event-name">{isBakery ? "Order name" : "Event name"}</label><input id="event-name" required maxLength={100} placeholder={isBakery ? "e.g. Chocolate birthday cake" : "e.g. Sharma wedding reception"} value={name} onChange={(event) => setName(event.target.value)}/></div>
         <div className="two-fields">
