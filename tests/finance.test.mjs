@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { bakeryCloseout, belowMarginTarget, categoriesFor, categoryForecast, isCategoryFor, metrics } from "../lib/finance.ts";
 import { orderAttention } from "../lib/order-workflow.ts";
-import { buildCustomerMessage, customerAmounts, customerDocumentTitle, customerWhatsAppUrl } from "../lib/customer-quote.ts";
+import { buildCustomerMessage, buildPaymentReminderMessage, customerAmounts, customerDocumentTitle, customerWhatsAppDraftUrl, customerWhatsAppUrl } from "../lib/customer-quote.ts";
 import { parseBakeryProfile } from "../lib/business-profile.ts";
 import { buildWorkspaceExport } from "../lib/workspace-export.ts";
 import { parseWorkspaceBackup, planWorkspaceRestore } from "../lib/workspace-restore.ts";
@@ -140,6 +140,25 @@ test("bakery profile is validated and brands the customer message", () => {
   assert.match(message, /^Asha's Bakes\n\+91 98765 43210\nhello@example.com\nInstagram: @ashasbakes/);
   assert.equal(new URL(shareUrl).searchParams.get("text"), message);
   assert.doesNotMatch(message, /profit|supplier|cost|margin|budget/i);
+});
+
+test("payment reminder is available only for delivered bakery orders with money due", () => {
+  const order = {
+    ...eventWith({ budget: 60000, agreed: 70000 }), kind: "bakery", orderStatus: "delivered",
+    name: "Birthday cake", client: "Asha", quotePaise: 100000,
+    payments: [{ amountPaise: 25000 }],
+  };
+  const message = buildPaymentReminderMessage(order, { businessName: "Asha's Bakes" });
+  assert.match(message, /Hi Asha,/);
+  assert.match(message, /₹750\.00 still due/);
+  assert.match(message, /₹250\.00 received of ₹1,000\.00 total/);
+  assert.match(message, /Asha's Bakes/);
+  assert.equal(new URL(customerWhatsAppDraftUrl(message)).searchParams.get("text"), message);
+  assert.doesNotMatch(message, /profit|supplier|cost|margin|budget/i);
+  assert.equal(buildPaymentReminderMessage({ ...order, orderStatus: "confirmed" }), null);
+  assert.equal(buildPaymentReminderMessage({ ...order, kind: "event" }), null);
+  assert.equal(buildPaymentReminderMessage({ ...order, payments: [{ amountPaise: 100000 }] }), null);
+  assert.equal(buildPaymentReminderMessage({ ...order, payments: [{ amountPaise: 120000 }] }), null);
 });
 
 test("full workspace export keeps archived records and nested transactions without owner IDs", () => {

@@ -8,6 +8,7 @@ import { buildEventCsv, eventReportFilename } from "../lib/report";
 import EventReport from "./event-report";
 import VendorCommitments from "./vendor-commitments";
 import CustomerQuoteModal from "./customer-quote";
+import PaymentReminder from "./payment-reminder";
 import BakeryProfileModal from "./bakery-profile";
 import PilotGuide from "./pilot-guide";
 import WorkspaceRestore from "./workspace-restore";
@@ -23,7 +24,7 @@ const today = () => {
 };
 const prettyDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-type Mode = "event" | "expense" | "edit-event" | "edit-expense" | "payment" | "edit-payment" | "customer-quote" | "bakery-profile" | null;
+type Mode = "event" | "expense" | "edit-event" | "edit-expense" | "payment" | "edit-payment" | "customer-quote" | "payment-reminder" | "bakery-profile" | null;
 type View = "overview" | "events" | "bakery";
 
 export default function Dashboard({ displayName, canReviewPilot = false }: { displayName: string; canReviewPilot?: boolean }) {
@@ -215,7 +216,7 @@ export default function Dashboard({ displayName, canReviewPilot = false }: { dis
             {selected && selectedMetrics && <section className="payments-card">
               <div className="expenses-heading">
                 <div><span className="section-kicker">{isBakery ? "CUSTOMER PAYMENTS" : "CLIENT PAYMENTS"}</span><h2>Payments received</h2></div>
-                <button type="button" className="outline-button" onClick={() => { setError(""); setMode("payment"); }}><Plus size={16}/> Record payment</button>
+                <div className="payment-heading-actions">{isBakery && selected.orderStatus === "delivered" && selectedMetrics.balance > 0 && <button type="button" className="outline-button" onClick={() => setMode("payment-reminder")}><MessageSquare size={16}/> Remind customer</button>}<button type="button" className="outline-button" onClick={() => { setError(""); setMode("payment"); }}><Plus size={16}/> Record payment</button></div>
               </div>
               <div className="payment-summary">
                 <div><span>{isBakery ? "Order price" : "Client quote"}</span><strong>{currency(selected.quotePaise)}</strong></div>
@@ -249,7 +250,7 @@ export default function Dashboard({ displayName, canReviewPilot = false }: { dis
     {(mode === "event" || mode === "edit-event") && <EventModal kind={workspaceKind} eventRecord={mode === "edit-event" ? selected : null} copySource={mode === "event" ? copySource : null} error={error} close={() => { setMode(null); setCopySource(null); }} saving={saving} submit={(data) => submit(mode === "edit-event" && selected ? `/api/events/${encodeURIComponent(selected.id)}` : "/api/events", data, mode === "edit-event" ? "PATCH" : "POST")} />}
     {(mode === "expense" || mode === "edit-expense") && selected && <ExpenseModal kind={selected.kind} eventName={selected.name} eventId={selected.id} expense={mode === "edit-expense" ? editingExpense : undefined} commitment={selected.commitments.find((item) => item.id === (mode === "edit-expense" ? editingExpense?.commitmentId : recordingCommitmentId))} error={error} close={() => { setMode(null); setEditingExpenseId(null); setRecordingCommitmentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-expense" && editingExpense ? `/api/expenses/${encodeURIComponent(editingExpense.id)}` : "/api/expenses", data, mode === "edit-expense" ? "PATCH" : "POST")} />}
     {(mode === "payment" || mode === "edit-payment") && selected && <PaymentModal kind={selected.kind} eventName={selected.name} eventId={selected.id} payment={mode === "edit-payment" ? editingPayment : undefined} error={error} close={() => { setMode(null); setEditingPaymentId(null); }} saving={saving} submit={(data) => submit(mode === "edit-payment" && editingPayment ? `/api/payments/${encodeURIComponent(editingPayment.id)}` : "/api/payments", data, mode === "edit-payment" ? "PATCH" : "POST")} />}
-  </div>{mode === "customer-quote" && selected?.kind === "bakery" && <CustomerQuoteModal order={selected} profile={bakeryProfile} editProfile={() => setMode("bakery-profile")} close={() => setMode(null)}/>}{mode === "bakery-profile" && <BakeryProfileModal profile={bakeryProfile} close={() => setMode(null)} saved={(profile) => { setBakeryProfile(profile); setProfileError(""); setMode(null); }}/>} {showRestore && <WorkspaceRestore close={() => setShowRestore(false)}/>} {selected && mode !== "customer-quote" && <EventReport event={selected} />}</>;
+  </div>{mode === "customer-quote" && selected?.kind === "bakery" && <CustomerQuoteModal order={selected} profile={bakeryProfile} editProfile={() => setMode("bakery-profile")} close={() => setMode(null)}/>}{mode === "payment-reminder" && selected?.kind === "bakery" && <PaymentReminder key={selected.id} order={selected} profile={bakeryProfile} close={() => setMode(null)}/>}{mode === "bakery-profile" && <BakeryProfileModal profile={bakeryProfile} close={() => setMode(null)} saved={(profile) => { setBakeryProfile(profile); setProfileError(""); setMode(null); }}/>} {showRestore && <WorkspaceRestore close={() => setShowRestore(false)}/>} {selected && mode !== "customer-quote" && mode !== "payment-reminder" && <EventReport event={selected} />}</>;
 }
 
 function Metric({ icon, label, value, note, tone }: { icon: React.ReactNode; label: string; value: string; note: string; tone: string }) {

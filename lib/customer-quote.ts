@@ -52,5 +52,24 @@ export function buildCustomerMessage(order: EventRecord, profile?: BakeryProfile
 }
 
 export function customerWhatsAppUrl(order: EventRecord, profile?: BakeryProfile): string {
-  return `https://wa.me/?text=${encodeURIComponent(buildCustomerMessage(order, profile))}`;
+  return customerWhatsAppDraftUrl(buildCustomerMessage(order, profile));
+}
+
+export function customerWhatsAppDraftUrl(message: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(message)}`;
+}
+
+export function buildPaymentReminderMessage(order: EventRecord, profile?: BakeryProfile): string | null {
+  if (order.kind !== "bakery" || order.orderStatus !== "delivered") return null;
+  const { received, balanceDue } = customerAmounts(order);
+  if (balanceDue === 0) return null;
+  return [
+    `Hi ${order.client || "there"},`,
+    "",
+    `Thank you for your order: ${order.name}.`,
+    `Our records show ${customerMoney(balanceDue)} still due (${customerMoney(received)} received of ${customerMoney(order.quotePaise)} total).`,
+    "Could you please arrange the remaining payment? If you've already paid, please let us know so we can update our records.",
+    "",
+    `Thank you${profile?.businessName ? `,\n${profile.businessName}` : "!"}`,
+  ].join("\n");
 }
